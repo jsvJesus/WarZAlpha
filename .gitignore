@@ -1,0 +1,53 @@
+# Visual Studio / IDE
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build output folders
+Debug/
+Release/
+x64/
+Win32/
+bin/
+obj/
+Build/
+Binaries/
+Intermediate/
+Saved/
+
+# Compiled/binary artifacts
+*.exe
+*.dll
+*.lib
+*.pdb
+*.obj
+*.pch
+*.ipch
+*.idb
+*.ilk
+*.exp
+*.tlog
+*.log
+*.cache
+*.sdf
+*.opensdf
+*.db
+*.opendb
+
+# Packages / archives (optional)
+*.zip
+*.7z
+*.rar
+
+# External libs/binaries (do not upload)
+External/**/Lib/
+External/**/lib/
+External/**/Bin/
+External/**/bin/
+
+*.lib
+*.dll
+*.exe
+*.pdb
