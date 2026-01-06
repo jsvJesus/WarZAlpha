@@ -518,6 +518,14 @@ int r3dRenderLayer::GetCurrentVertexShaderIdx() const
 
 HANDLE		r3d_Thread1;
 
+enum r3dRenderPath
+{
+	R3D_PATH_DX9 = 0,
+#if defined(R3D_USE_DX11)
+	R3D_PATH_DX11 = 1
+#endif
+};
+
 int r3dRenderLayer::Init(HWND hWindow, const char* DisplayName)
 {
 	InitializeCriticalSection( &g_ResourceCritSection ) ;
@@ -526,6 +534,13 @@ int r3dRenderLayer::Init(HWND hWindow, const char* DisplayName)
 	r3dMesh::Init() ;
 
 	InitDeviceQueue();
+
+#if defined(R3D_USE_DX11)
+	if (!dx11RenderLayer)
+	{
+		dx11RenderLayer = new r3dDX11RenderLayer();
+	}
+#endif
 
 	SupportsVertexTextureFetch = 1 ;
 
@@ -662,6 +677,18 @@ int r3dRenderLayer::Close()
 		{
 			r3dOutToLog( R3D_NVAPI "failed to destroy stereo handle!" ) ;
 		}
+	}
+#endif
+
+#if defined(R3D_USE_DX11)
+	if (dx11RenderLayer)
+	{
+		if (CurrentRenderPath == R3D_PATH_DX11)
+		{
+			dx11RenderLayer->Close();
+		}
+		delete dx11RenderLayer;
+		dx11RenderLayer = NULL;
 	}
 #endif
 
@@ -1642,7 +1669,35 @@ int r3dRenderLayer::SetMode(int XRes, int YRes, int BPP, int Flags, int RenderPa
 	int	isWindowed;
 	int	DepthMode;
 
-	RenderPath = RenderPath; //UNUSED
+	//RenderPath = RenderPath; //UNUSED
+
+#if defined(R3D_USE_DX11)
+	if (RenderPath == R3D_PATH_DX11)
+	{
+		if (!dx11RenderLayer)
+		{
+			dx11RenderLayer = new r3dDX11RenderLayer();
+		}
+
+		if (CurrentRenderPath != R3D_PATH_DX11)
+		{
+			dx11RenderLayer->Init(HLibWin, XRes, YRes, BPP, Flags);
+			CurrentRenderPath = R3D_PATH_DX11;
+		}
+		else
+		{
+			dx11RenderLayer->Resize(XRes, YRes, BPP, Flags);
+		}
+
+		return TRUE;
+	}
+	else if (CurrentRenderPath == R3D_PATH_DX11 && dx11RenderLayer)
+	{
+		dx11RenderLayer->Close();
+	}
+#endif
+
+	CurrentRenderPath = R3D_PATH_DX9;
 
 	// RTBuffer = NULL;
 
@@ -2082,6 +2137,11 @@ r3dRenderLayer::r3dRenderLayer()
 	pdi = NULL; 
 	pd3d= NULL; 
 	SetD3DDev( NULL );
+
+#if defined(R3D_USE_DX11)
+	dx11RenderLayer = NULL;
+#endif
+	CurrentRenderPath = R3D_PATH_DX9;
 
 	ViewX = 0.f ;
 	ViewY = 0.f ;
@@ -5068,6 +5128,9 @@ void r3dD3DResourceTunnel::ReleaseAndReset()
 {
 	if( R3D_IS_MAIN_THREAD() )
 	{
+#if defined(R3D_USE_DX11)
+		ReleaseDX11();
+#endif
 		if( mRes )
 			mRes->Release() ;
 
@@ -5080,6 +5143,38 @@ void r3dD3DResourceTunnel::ReleaseAndReset()
 }
 
 //------------------------------------------------------------------------
+
+#if defined(R3D_USE_DX11)
+void r3dD3DResourceTunnel::ReleaseDX11()
+{
+}
+
+void r3dD3DVertexBufferTunnel::ReleaseDX11()
+{
+	delete mDX11Buffer;
+	mDX11Buffer = 0;
+}
+
+void r3dD3DIndexBufferTunnel::ReleaseDX11()
+{
+	delete mDX11Buffer;
+	mDX11Buffer = 0;
+}
+
+void r3dD3DTextureTunnel::ReleaseDX11()
+{
+	delete mDX11Texture;
+	mDX11Texture = 0;
+}
+
+void r3dD3DSurfaceTunnel::ReleaseDX11()
+{
+	delete mDX11RenderTarget;
+	mDX11RenderTarget = 0;
+	delete mDX11DepthStencil;
+	mDX11DepthStencil = 0;
+}
+#endif
 
 struct VLockParams
 {
@@ -5202,7 +5297,11 @@ static void DoCreateTextureADS( void* params )
 {
 	CreateTextureParamsAutoDownScale* pms = (CreateTextureParamsAutoDownScale*) params ;
 
+#if defined(R3D_USE_DX11)
+	r3dDX11Texture* tex = new r3dDX11Texture();
+#else
 	IDirect3DTexture9* tex ;
+#endif
 
 	int W = *pms->Width ;
 	int H = *pms->Height ;
@@ -5210,7 +5309,11 @@ static void DoCreateTextureADS( void* params )
 
 	for( ; ; )
 	{
+#if defined(R3D_USE_DX11)
+		HRESULT hres = tex->Create(W, H, L, pms->Usage, pms->Format, pms->Pool);
+#else
 		HRESULT hres = r3dRenderer->pd3ddev->CreateTexture ( W, H, L, pms->Usage, pms->Format, pms->Pool, &tex, 0 ) ;
+#endif
 
 		r3dRenderer->CheckOutOfMemory( hres ) ;
 
@@ -5236,8 +5339,11 @@ static void DoCreateTextureADS( void* params )
 	*pms->Width		= W ;
 	*pms->Height	= H ;
 	*pms->Levels	= L ;
-	
+#if defined(R3D_USE_DX11)
+	pms->TextureTunnel->SetDX11(tex);
+#else
 	pms->TextureTunnel->Set( tex ) ;
+#endif
 }
 
 
@@ -5293,10 +5399,14 @@ const char* PoolToString( D3DPOOL pool )
 static void DoCreateTexture( void* params )
 {
 	CreateTextureParams* pms = (CreateTextureParams*) params ;
-
+#if defined(R3D_USE_DX11)
+	r3dDX11Texture* tex = new r3dDX11Texture();
+	HRESULT hr = tex->Create(pms->Width, pms->Height, pms->Levels, pms->Usage, pms->Format, pms->Pool);
+#else
 	IDirect3DTexture9* tex ;
 
 	HRESULT hr = r3dRenderer->pd3ddev->CreateTexture ( pms->Width, pms->Height, pms->Levels, pms->Usage, pms->Format, pms->Pool, &tex, 0 ) ;
+#endif
 
 	r3dRenderer->CheckOutOfMemory( hr ) ;
 
@@ -5322,8 +5432,11 @@ static void DoCreateTexture( void* params )
 						hr
 						);
 	}
-
+#if defined(R3D_USE_DX11)
+	pms->TextureTunnel->SetDX11(tex);
+#else
 	pms->TextureTunnel->Set( tex ) ;
+#endif
 }
 
 void
@@ -5359,12 +5472,16 @@ struct CreateVolumeTextureParams
 static void DoCreateVolumeTexture( void* params )
 {
 	CreateVolumeTextureParams* pms = (CreateVolumeTextureParams*) params ;
-
+#if defined(R3D_USE_DX11)
+	r3dDX11Texture* tex = new r3dDX11Texture();
+	D3D_V(tex->CreateVolumeTexture(pms->Width, pms->Height, pms->Depth, pms->Levels, pms->Usage, pms->Format, pms->Pool));
+	pms->TextureTunnel->SetDX11(tex);
+#else
 	IDirect3DVolumeTexture9* tex ;
-
 	D3D_V( r3dRenderer->pd3ddev->CreateVolumeTexture ( pms->Width, pms->Height, pms->Depth, pms->Levels, pms->Usage, pms->Format, pms->Pool, &tex, 0 ) );
 
 	pms->TextureTunnel->Set( tex ) ;
+#endif
 }
 
 void r3dDeviceTunnel::CreateVolumeTexture( UINT Width,UINT Height,UINT Depth,UINT Levels,DWORD Usage,D3DFORMAT Format,D3DPOOL Pool, r3dD3DTextureTunnel* TextureTunnel )
@@ -5398,12 +5515,17 @@ struct CreateCubeTextureParams
 static void DoCreateCubeTexture( void* params )
 {
 	CreateCubeTextureParams* pms = (CreateCubeTextureParams*) params ;
-
+#if defined(R3D_USE_DX11)
+	r3dDX11Texture* tex = new r3dDX11Texture();
+	D3D_V(tex->CreateCubeTexture(pms->EdgeLength, pms->Levels, pms->Usage, pms->Format, pms->Pool));
+	pms->TextureTunnel->SetDX11(tex);
+#else
 	IDirect3DCubeTexture9* tex ;
 
 	D3D_V( r3dRenderer->pd3ddev->CreateCubeTexture ( pms->EdgeLength, pms->Levels, pms->Usage, pms->Format, pms->Pool, &tex, 0 ) );
 
 	pms->TextureTunnel->Set( tex ) ;
+#endif
 }
 
 void r3dDeviceTunnel::CreateCubeTexture( UINT EdgeLength,UINT Levels,DWORD Usage,D3DFORMAT Format,D3DPOOL Pool, r3dD3DTextureTunnel* TextureTunnel )
@@ -5436,9 +5558,15 @@ static void DoCreateVertexBuffer( void* params )
 {
 	CreateVertexBufferParams* pms = ( CreateVertexBufferParams* ) params ;
 
-	IDirect3DVertexBuffer9* buf ;
-	D3D_V( r3dRenderer->pd3ddev->CreateVertexBuffer( pms->Length, pms->Usage, pms->FVF, pms->Pool, &buf, 0 ) );
-	pms->VertexBufferTunnel->Set( buf ) ;
+#if defined(R3D_USE_DX11)
+	r3dDX11Buffer* buf = new r3dDX11Buffer();
+	D3D_V(buf->CreateVertexBuffer(pms->Length, pms->Usage, pms->FVF, pms->Pool));
+	pms->VertexBufferTunnel->SetDX11(buf);
+#else
+	IDirect3DVertexBuffer9* buf;
+	D3D_V(r3dRenderer->pd3ddev->CreateVertexBuffer(pms->Length, pms->Usage, pms->FVF, pms->Pool, &buf, 0));
+	pms->VertexBufferTunnel->Set(buf);
+#endif
 }
 
 void
@@ -5483,26 +5611,39 @@ const char* D3DErrorToString( HRESULT hr )
 	return "Unknown error" ;
 }
 
-static void DoCreateIndexBuffer( void* params )
+static void DoCreateIndexBuffer(void* params)
 {
-	CreateIndexBufferParams* pms = ( CreateIndexBufferParams* ) params ;
+	CreateIndexBufferParams* pms = (CreateIndexBufferParams*)params;
 
-	IDirect3DIndexBuffer9* buf ;
+#if defined(R3D_USE_DX11)
+	r3dDX11Buffer* buf = new r3dDX11Buffer();
+	HRESULT hr = buf->CreateIndexBuffer(pms->Length, pms->Usage, pms->Format, pms->Pool);
+#else
+	IDirect3DIndexBuffer9* buf;
 
-	HRESULT hr = r3dRenderer->pd3ddev->CreateIndexBuffer( pms->Length, pms->Usage, pms->Format, pms->Pool, &buf, 0 ) ;
-	if( hr == D3DERR_OUTOFVIDEOMEMORY )
+	HRESULT hr = r3dRenderer->pd3ddev->CreateIndexBuffer(pms->Length, pms->Usage, pms->Format, pms->Pool, &buf, 0);
+#endif
+	if (hr == D3DERR_OUTOFVIDEOMEMORY)
 	{
-		r3dOutToLog( "CreateIndexBuffer returned D3DERR_OUTOFVIDEOMEMORY, trying to evict resources and recreate." ) ;
-		D3D_V( r3dRenderer->pd3ddev->EvictManagedResources() ) ;
-		D3D_V( r3dRenderer->pd3ddev->CreateIndexBuffer( pms->Length, pms->Usage, pms->Format, pms->Pool, &buf, 0 ) ) ;
+		r3dOutToLog("CreateIndexBuffer returned D3DERR_OUTOFVIDEOMEMORY, trying to evict resources and recreate.");
+#if defined(R3D_USE_DX11)
+		hr = buf->CreateIndexBuffer(pms->Length, pms->Usage, pms->Format, pms->Pool);
+#else
+		D3D_V(r3dRenderer->pd3ddev->EvictManagedResources());
+		D3D_V(r3dRenderer->pd3ddev->CreateIndexBuffer(pms->Length, pms->Usage, pms->Format, pms->Pool, &buf, 0));
+#endif
 	}
 
-	if( hr != D3D_OK )
+	if (hr != D3D_OK)
 	{
-		r3dError( "CreateIndexBuffer failed with error %s", D3DErrorToString( hr ) ) ;
+		r3dError("CreateIndexBuffer failed with error %s", D3DErrorToString(hr));
 	}
 
-	pms->IndexBufferTunnel->Set( buf ) ;
+#if defined(R3D_USE_DX11)
+	pms->IndexBufferTunnel->SetDX11(buf);
+#else
+	pms->IndexBufferTunnel->Set(buf);
+#endif
 }
 
 void r3dDeviceTunnel::CreateIndexBuffer( UINT Length,DWORD Usage,D3DFORMAT Format,D3DPOOL Pool, r3dD3DIndexBufferTunnel* IndexBufferTunnel )
@@ -5531,15 +5672,21 @@ struct CreateRenderTargetParams
 	r3dD3DSurfaceTunnel*	SurfaceTunnel ;
 };
 
-static void DoCreateRenderTarget( void* params )
+static void DoCreateRenderTarget(void* params)
 {
-	CreateRenderTargetParams* pms = (CreateRenderTargetParams*) params ;
+	CreateRenderTargetParams* pms = (CreateRenderTargetParams*)params;
 
-	IDirect3DSurface9* surf ;
+#if defined(R3D_USE_DX11)
+	r3dDX11RenderTarget* target = new r3dDX11RenderTarget();
+	D3D_V(target->Create(pms->Width, pms->Height, pms->Format, pms->MultiSample, pms->MultisampleQuality, pms->Lockable));
+	pms->SurfaceTunnel->SetDX11RenderTarget(target);
+#else
+	IDirect3DSurface9* surf;
 
-	D3D_V( r3dRenderer->pd3ddev->CreateRenderTarget( pms->Width, pms->Height, pms->Format, pms->MultiSample, pms->MultisampleQuality, pms->Lockable, &surf, 0 ) );
+	D3D_V(r3dRenderer->pd3ddev->CreateRenderTarget(pms->Width, pms->Height, pms->Format, pms->MultiSample, pms->MultisampleQuality, pms->Lockable, &surf, 0));
 
-	pms->SurfaceTunnel->Set( surf ) ;
+	pms->SurfaceTunnel->Set(surf);
+#endif
 };
 
 void r3dDeviceTunnel::CreateRenderTarget( UINT Width,UINT Height,D3DFORMAT Format,D3DMULTISAMPLE_TYPE MultiSample,DWORD MultisampleQuality,BOOL Lockable,r3dD3DSurfaceTunnel* SurfaceTunnel )
@@ -5570,15 +5717,21 @@ struct CreateDepthStencilParams
 	r3dD3DSurfaceTunnel*	SurfaceTunnel ;
 };
 
-static void DoCreateDepthStencil( void * params )
+static void DoCreateDepthStencil(void* params)
 {
-	CreateDepthStencilParams* pms = ( CreateDepthStencilParams* ) params ;
+	CreateDepthStencilParams* pms = (CreateDepthStencilParams*)params;
 
-	IDirect3DSurface9* surf ;
+#if defined(R3D_USE_DX11)
+	r3dDX11DepthStencil* depthStencil = new r3dDX11DepthStencil();
+	D3D_V(depthStencil->Create(pms->Width, pms->Height, pms->Format, pms->MultiSample, pms->MultisampleQuality, pms->Discard));
+	pms->SurfaceTunnel->SetDX11DepthStencil(depthStencil);
+#else
+	IDirect3DSurface9* surf;
 
-	D3D_V( r3dRenderer->pd3ddev->CreateDepthStencilSurface( pms->Width, pms->Height, pms->Format, pms->MultiSample, pms->MultisampleQuality, pms->Discard, &surf, 0 ) ) ;
+	D3D_V(r3dRenderer->pd3ddev->CreateDepthStencilSurface(pms->Width, pms->Height, pms->Format, pms->MultiSample, pms->MultisampleQuality, pms->Discard, &surf, 0));
 
-	pms->SurfaceTunnel->Set( surf );
+	pms->SurfaceTunnel->Set(surf);
+#endif
 }
 
 void
@@ -5653,22 +5806,31 @@ struct D3DXCreateTextureFFIMEXParams
 	}
 };
 
-static void DoCreateTextureFFIMEX( void* params )
+static void DoCreateTextureFFIMEX(void* params)
 {
-	D3DXCreateTextureFFIMEXParams * pms = (D3DXCreateTextureFFIMEXParams*) params ;
+	D3DXCreateTextureFFIMEXParams* pms = (D3DXCreateTextureFFIMEXParams*)params;
 
-	IDirect3DTexture9* tex ;
-	
-	HRESULT hr = D3DXCreateTextureFromFileInMemoryEx( r3dRenderer->pd3ddev, pms->pSrcData, pms->SrcDataSize, pms->Width, pms->Height, pms->MipLevels, pms->Usage, pms->Format, pms->Pool, pms->Filter, pms->MipFilter, pms->ColorKey, pms->pSrcInfo, pms->pPalette, &tex ) ;
+#if defined(R3D_USE_DX11)
+	r3dDX11Texture* tex = new r3dDX11Texture();
+	HRESULT hr = tex->CreateTextureFromFileInMemoryEx(pms->pSrcData, pms->SrcDataSize, pms->Width, pms->Height, pms->MipLevels, pms->Usage, pms->Format, pms->Pool, pms->Filter, pms->MipFilter, pms->ColorKey, pms->pSrcInfo, pms->pPalette);
+#else
+	IDirect3DTexture9* tex;
 
-	r3dRenderer->CheckOutOfMemory( hr );
+	HRESULT hr = D3DXCreateTextureFromFileInMemoryEx(r3dRenderer->pd3ddev, pms->pSrcData, pms->SrcDataSize, pms->Width, pms->Height, pms->MipLevels, pms->Usage, pms->Format, pms->Pool, pms->Filter, pms->MipFilter, pms->ColorKey, pms->pSrcInfo, pms->pPalette, &tex);
+#endif
 
-	if( hr != S_OK )
+	r3dRenderer->CheckOutOfMemory(hr);
+
+	if (hr != S_OK)
 	{
-		r3dError( "D3DXCreateTextureFromFileInMemoryEx: error (%d) on %s\n", hr, pms->pDebugName ) ;
+		r3dError("D3DXCreateTextureFromFileInMemoryEx: error (%d) on %s\n", hr, pms->pDebugName);
 	}
 
-	pms->TextureTunnel->Set( tex ) ;
+#if defined(R3D_USE_DX11)
+	pms->TextureTunnel->SetDX11(tex);
+#else
+	pms->TextureTunnel->Set(tex);
+#endif
 }
 
 void r3dDeviceTunnel::D3DXCreateTextureFromFileInMemoryEx( LPCVOID pSrcData, UINT SrcDataSize, UINT Width, UINT Height, UINT MipLevels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, DWORD Filter, DWORD MipFilter, D3DCOLOR ColorKey, D3DXIMAGE_INFO* pSrcInfo, PALETTEENTRY* pPalette, r3dD3DTextureTunnel* TextureTunnel, const char* DEBUG_NAME, bool async /*= false*/ )
@@ -5724,15 +5886,21 @@ struct D3DXCreateVolumeTextureFFIMEXParams
 	r3dD3DTextureTunnel* TextureTunnel ;
 };
 
-static void DoCreateVolumeTextureFFIMEX( void* params )
+static void DoCreateVolumeTextureFFIMEX(void* params)
 {
-	D3DXCreateVolumeTextureFFIMEXParams * pms = (D3DXCreateVolumeTextureFFIMEXParams*) params ;
+	D3DXCreateVolumeTextureFFIMEXParams* pms = (D3DXCreateVolumeTextureFFIMEXParams*)params;
 
-	IDirect3DVolumeTexture9* tex ;
+#if defined(R3D_USE_DX11)
+	r3dDX11Texture* tex = new r3dDX11Texture();
+	D3D_V(tex->CreateVolumeTextureFromFileInMemoryEx(pms->pSrcData, pms->SrcDataSize, pms->Width, pms->Height, pms->Depth, pms->MipLevels, pms->Usage, pms->Format, pms->Pool, pms->Filter, pms->MipFilter, pms->ColorKey, pms->pSrcInfo, pms->pPalette));
+	pms->TextureTunnel->SetDX11(tex);
+#else
+	IDirect3DVolumeTexture9* tex;
 
-	D3D_V( D3DXCreateVolumeTextureFromFileInMemoryEx( r3dRenderer->pd3ddev, pms->pSrcData, pms->SrcDataSize, pms->Width, pms->Height, pms->Depth, pms->MipLevels, pms->Usage, pms->Format, pms->Pool, pms->Filter, pms->MipFilter, pms->ColorKey, pms->pSrcInfo, pms->pPalette, &tex ) );
+	D3D_V(D3DXCreateVolumeTextureFromFileInMemoryEx(r3dRenderer->pd3ddev, pms->pSrcData, pms->SrcDataSize, pms->Width, pms->Height, pms->Depth, pms->MipLevels, pms->Usage, pms->Format, pms->Pool, pms->Filter, pms->MipFilter, pms->ColorKey, pms->pSrcInfo, pms->pPalette, &tex));
 
-	pms->TextureTunnel->Set( tex ) ;
+	pms->TextureTunnel->Set(tex);
+#endif
 }
 
 void r3dDeviceTunnel::D3DXCreateVolumeTextureFromFileInMemoryEx( LPCVOID pSrcData, UINT SrcDataSize, UINT Width, UINT Height, UINT Depth, UINT MipLevels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, DWORD Filter, DWORD MipFilter, D3DCOLOR ColorKey, D3DXIMAGE_INFO* pSrcInfo, PALETTEENTRY* pPalette, r3dD3DTextureTunnel* TextureTunnel, bool async /*= false*/ )
@@ -5786,16 +5954,23 @@ struct D3DXCreateCubeTextureFFIMEXParams
 	r3dD3DTextureTunnel*	TextureTunnel ;
 };
 
-static void DoCreateCubeTextureFFIMEX( void* params )
+static void DoCreateCubeTextureFFIMEX(void* params)
 {
-	D3DXCreateCubeTextureFFIMEXParams * pms = (D3DXCreateCubeTextureFFIMEXParams*) params ;
+	D3DXCreateCubeTextureFFIMEXParams* pms = (D3DXCreateCubeTextureFFIMEXParams*)params;
 
-	IDirect3DCubeTexture9* tex ;
+#if defined(R3D_USE_DX11)
+	r3dDX11Texture* tex = new r3dDX11Texture();
+	D3D_V(tex->CreateCubeTextureFromFileInMemoryEx(pms->pSrcData, pms->SrcDataSize, pms->Size, pms->MipLevels, pms->Usage,
+		pms->Format, pms->Pool, pms->Filter, pms->MipFilter, pms->ColorKey, pms->pSrcInfo, pms->pPalette));
+	pms->TextureTunnel->SetDX11(tex);
+#else
+	IDirect3DCubeTexture9* tex;
 
-	D3D_V( D3DXCreateCubeTextureFromFileInMemoryEx(	r3dRenderer->pd3ddev, pms->pSrcData, pms->SrcDataSize, pms->Size, pms->MipLevels, pms->Usage,
-													pms->Format, pms->Pool, pms->Filter, pms->MipFilter, pms->ColorKey, pms->pSrcInfo, pms->pPalette, &tex ) );
+	D3D_V(D3DXCreateCubeTextureFromFileInMemoryEx(r3dRenderer->pd3ddev, pms->pSrcData, pms->SrcDataSize, pms->Size, pms->MipLevels, pms->Usage,
+		pms->Format, pms->Pool, pms->Filter, pms->MipFilter, pms->ColorKey, pms->pSrcInfo, pms->pPalette, &tex));
 
-	pms->TextureTunnel->Set( tex ) ;
+	pms->TextureTunnel->Set(tex);
+#endif
 }
 
 void r3dDeviceTunnel::D3DXCreateCubeTextureFromFileInMemoryEx( LPCVOID pSrcData, UINT SrcDataSize, UINT Size, UINT MipLevels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, DWORD Filter, DWORD MipFilter, D3DCOLOR ColorKey, D3DXIMAGE_INFO* pSrcInfo, PALETTEENTRY* pPalette, r3dD3DTextureTunnel* TextureTunnel, bool async /*= false*/ )
@@ -6081,6 +6256,10 @@ r3dD3DSurfaceTunnel::ReleaseAndReset()
 	R3D_ENSURE_MAIN_THREAD();
 
 	int refCount = 0 ;
+
+#if defined(R3D_USE_DX11)
+	ReleaseDX11();
+#endif
 
 	if( mRes )
 	{

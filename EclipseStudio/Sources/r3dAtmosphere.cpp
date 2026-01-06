@@ -17,6 +17,35 @@
 
 #include "TrueNature/Sun.h"
 
+// weather system by jsvJesus
+#include "../GameEngine/gameobjects/PhysXWorld.h"
+#include "../GameEngine/gameobjects/PhysObj.h"
+
+extern r3dCamera gCam;
+extern PhysXWorld* g_pPhysicsWorld;
+
+static bool IsRainOccludedAtCamera()
+{
+#ifndef WO_SERVER
+	if (!g_pPhysicsWorld || !g_pPhysicsWorld->PhysXScene)
+	{
+		return false;
+	}
+
+	const PxVec3 origin(gCam.x, gCam.y, gCam.z);
+	const PxVec3 direction(0.0f, 1.0f, 0.0f);
+	const float maxDistance = 10000.0f;
+
+	PxRaycastHit hit;
+	PxSceneQueryFilterData filter(PxFilterData(COLLIDABLE_STATIC_MASK, 0, 0, 0), PxSceneQueryFilterFlag::eSTATIC);
+
+	return g_pPhysicsWorld->raycastSingle(origin, direction, maxDistance, PxSceneQueryFlag::eIMPACT, hit, filter);
+#else
+	return false;
+#endif
+}
+/////////////////////////////////////////////////////////////////
+
 void WriteTimeCurve( FILE* fout, r3dTimeGradient2& curve, const char * szName );
 void ReadTimeCurveNew( Script_c &script, r3dTimeGradient2& curve );
 
@@ -44,6 +73,15 @@ static void atmoReloadTexture( r3dTexture*& tex )
 	tex->Load( FileName, D3DFMT_FROM_FILE, GetAtmoDownScale() );
 }
 
+static r3dAtmosphere::WeatherPreset LerpWeatherPreset(const r3dAtmosphere::WeatherPreset& from, const r3dAtmosphere::WeatherPreset& to, float t)
+{ // weather system by jsvJesus
+	r3dAtmosphere::WeatherPreset out;
+	out.CloudDensityScale = R3D_LERP(from.CloudDensityScale, to.CloudDensityScale, t);
+	out.FogDensityScale = R3D_LERP(from.FogDensityScale, to.FogDensityScale, t);
+	out.FogDistanceScale = R3D_LERP(from.FogDistanceScale, to.FogDistanceScale, t);
+	out.RainIntensity = R3D_LERP(from.RainIntensity, to.RainIntensity, t);
+	return out;
+}
 
 void r3dAtmosphere :: Reset()
 {
@@ -149,6 +187,38 @@ void r3dAtmosphere :: Reset()
 
 	SkyDomeRotationY = 0.f;
 
+	// weather system by jsvJesus
+	bWeatherSystemEnabled = 1;
+	WeatherCurrentType = WEATHER_CLEAR;
+	WeatherTargetType = WEATHER_CLEAR;
+	WeatherTransitionDuration = 30.0f;
+	WeatherTransitionElapsed = 0.0f;
+	WeatherMinDuration = 300.0f;
+	WeatherMaxDuration = 900.0f;
+	WeatherTimeRemaining = WeatherMinDuration;
+
+	WeatherPresets[WEATHER_CLEAR].CloudDensityScale = 1.0f;
+	WeatherPresets[WEATHER_CLEAR].FogDensityScale = 1.0f;
+	WeatherPresets[WEATHER_CLEAR].FogDistanceScale = 1.0f;
+	WeatherPresets[WEATHER_CLEAR].RainIntensity = 0.0f;
+
+	WeatherPresets[WEATHER_CLOUDY].CloudDensityScale = 1.25f;
+	WeatherPresets[WEATHER_CLOUDY].FogDensityScale = 1.1f;
+	WeatherPresets[WEATHER_CLOUDY].FogDistanceScale = 0.95f;
+	WeatherPresets[WEATHER_CLOUDY].RainIntensity = 0.0f;
+
+	WeatherPresets[WEATHER_RAIN].CloudDensityScale = 1.5f;
+	WeatherPresets[WEATHER_RAIN].FogDensityScale = 1.3f;
+	WeatherPresets[WEATHER_RAIN].FogDistanceScale = 0.85f;
+	WeatherPresets[WEATHER_RAIN].RainIntensity = 1.0f;
+
+	WeatherPresets[WEATHER_STORM].CloudDensityScale = 1.8f;
+	WeatherPresets[WEATHER_STORM].FogDensityScale = 1.6f;
+	WeatherPresets[WEATHER_STORM].FogDistanceScale = 0.75f;
+	WeatherPresets[WEATHER_STORM].RainIntensity = 1.35f;
+
+	WeatherActive = WeatherPresets[WEATHER_CLEAR];
+	/////////////////////////////////////////////////////////////
 }
 
 template < bool Write >
@@ -274,6 +344,41 @@ int r3dAtmosphere :: SerializeXML( pugi::xml_node root )
 		SerializeXMLVal<W>( "sunlight"							, atmoNode, &SunLightOn					);
 
 		SerializeXMLVal<W>("particle_shading_coef"				, atmoNode, &ParticleShadingCoef		);
+
+		// weather system by jsvJesus
+		SerializeXMLVal<W>("weather_enabled", atmoNode, &bWeatherSystemEnabled);
+		int weatherCurrent = (int)WeatherCurrentType;
+		int weatherTarget = (int)WeatherTargetType;
+
+		SerializeXMLVal<W>("weather_current", atmoNode, &weatherCurrent);
+		SerializeXMLVal<W>("weather_target", atmoNode, &weatherTarget);
+
+		if (!W)
+		{
+			WeatherCurrentType = (WeatherType)weatherCurrent;
+			WeatherTargetType = (WeatherType)weatherTarget;
+		}
+		SerializeXMLVal<W>("weather_transition_duration", atmoNode, &WeatherTransitionDuration);
+		SerializeXMLVal<W>("weather_min_duration", atmoNode, &WeatherMinDuration);
+		SerializeXMLVal<W>("weather_max_duration", atmoNode, &WeatherMaxDuration);
+
+		for (int i = 0; i < WEATHER_COUNT; ++i)
+		{
+			char name[64];
+
+			sprintf(name, "weather_cloud_density_scale_%d", i);
+			SerializeXMLVal<W>(name, atmoNode, &WeatherPresets[i].CloudDensityScale);
+
+			sprintf(name, "weather_fog_density_scale_%d", i);
+			SerializeXMLVal<W>(name, atmoNode, &WeatherPresets[i].FogDensityScale);
+
+			sprintf(name, "weather_fog_distance_scale_%d", i);
+			SerializeXMLVal<W>(name, atmoNode, &WeatherPresets[i].FogDistanceScale);
+
+			sprintf(name, "weather_rain_intensity_%d", i);
+			SerializeXMLVal<W>(name, atmoNode, &WeatherPresets[i].RainIntensity);
+		}
+		/////////////////////////////////////////////////////////////////////////////
 		
 		if( g_pWind )
 		{
@@ -318,7 +423,25 @@ int	r3dAtmosphere :: LoadFromXML( pugi::xml_node root )
 		DisableStaticSky();
 	}
 
-	SetRainParticle( RainParticleSystemName ) ;
+	//SetRainParticle( RainParticleSystemName ) ;
+
+	// weather system by jsvJesus
+	WeatherCurrentType = (WeatherType)R3D_MIN(R3D_MAX(int(WeatherCurrentType), 0), WEATHER_COUNT - 1);
+	WeatherTargetType = (WeatherType)R3D_MIN(R3D_MAX(int(WeatherTargetType), 0), WEATHER_COUNT - 1);
+	WeatherTransitionElapsed = 0.0f;
+	WeatherTimeRemaining = WeatherMinDuration;
+	WeatherActive = WeatherPresets[WeatherCurrentType];
+
+	if (bWeatherSystemEnabled)
+	{
+		StopRainParticle();
+	}
+	else
+	{
+		WeatherActive = WeatherPresets[WEATHER_CLEAR];
+		SetRainParticle(RainParticleSystemName);
+	}
+	////////////////////////////////////////////////////////////////
 
 	return res ;
 }
@@ -525,11 +648,86 @@ void r3dAtmosphere::ReloadTextures()
 
 void r3dAtmosphere::Update()
 {
+	if (bWeatherSystemEnabled)
+	{ // weather system by jsvJesus
+		UpdateWeather(r3dGetFrameTime());
+	}
+
 	if( RainParticleSystem )
 	{
 		RainParticleSystem->SetPosition( gCam ) ;
 	}
 }
+
+// weather system by jsvJesus
+void r3dAtmosphere::UpdateWeather(float dt)
+{
+	if (WeatherMaxDuration < WeatherMinDuration)
+	{
+		R3D_SWAP(WeatherMaxDuration, WeatherMinDuration);
+	}
+
+	WeatherTimeRemaining -= dt;
+
+	if (WeatherTimeRemaining <= 0.0f)
+	{
+		int next = int(u_GetRandom(0.0f, float(WEATHER_COUNT) - 0.01f));
+
+		if (next == WeatherCurrentType)
+		{
+			next = (WeatherCurrentType + 1) % WEATHER_COUNT;
+		}
+
+		WeatherTargetType = (WeatherType)next;
+		WeatherTransitionElapsed = 0.0f;
+		WeatherTimeRemaining = u_GetRandom(WeatherMinDuration, WeatherMaxDuration);
+	}
+
+	if (WeatherCurrentType != WeatherTargetType)
+	{
+		WeatherTransitionElapsed += dt;
+		float t = 1.0f;
+
+		if (WeatherTransitionDuration > 0.0f)
+		{
+			t = R3D_MIN(WeatherTransitionElapsed / WeatherTransitionDuration, 1.0f);
+		}
+
+		WeatherActive = LerpWeatherPreset(WeatherPresets[WeatherCurrentType], WeatherPresets[WeatherTargetType], t);
+
+		if (t >= 1.0f)
+		{
+			WeatherCurrentType = WeatherTargetType;
+			WeatherTransitionElapsed = 0.0f;
+		}
+	}
+	else
+	{
+		WeatherActive = WeatherPresets[WeatherCurrentType];
+	}
+
+	float rainIntensity = R3D_MAX(0.0f, WeatherActive.RainIntensity);
+
+	if (rainIntensity > 0.01f)
+	{
+		if (!RainParticleSystem && stricmp(RainParticleSystemName, PT_EMPTY_STR) != 0 && strlen(RainParticleSystemName))
+		{
+			SetRainParticle(RainParticleSystemName);
+		}
+
+		if (RainParticleSystem)
+		{
+			obj_ParticleSystem* emitter = static_cast<obj_ParticleSystem*>(RainParticleSystem);
+			emitter->GlobalScale = R3D_MAX(0.1f, rainIntensity);
+			emitter->bRender = !IsRainOccludedAtCamera();
+		}
+	}
+	else if (RainParticleSystem)
+	{
+		StopRainParticle();
+	}
+}
+///////////////////////////////////////////////////////////////////
 
 void r3dAtmosphere::SetRainParticle( const char* Name ) 
 {
@@ -565,6 +763,17 @@ void r3dAtmosphere::ClearRainParticle()
 	r3dGameLevel::Environment.__CurTime;
 	SetRainParticle( PT_EMPTY_STR ) ;
 }
+
+// weather system by jsvJesus
+void r3dAtmosphere::StopRainParticle()
+{
+	if (RainParticleSystem)
+	{
+		GameWorld().DeleteObject(RainParticleSystem);
+		RainParticleSystem = 0;
+	}
+}
+/////////////////////////////////////////////////
 
 void GetAdjecantSkyPhasesAndLerpT(	r3dAtmosphere::SkyPhase *oPhase0, 
 									r3dAtmosphere::SkyPhase *oPhase1,

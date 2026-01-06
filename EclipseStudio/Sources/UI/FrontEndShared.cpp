@@ -162,7 +162,8 @@ void FillDefaultSettings( GraphicSettings& settings, r3dDevStrength strength )
 
 	case S_ULTRA:
 		settings.mesh_quality			= 3;
-		settings.texture_quality		= 3;
+		//settings.texture_quality		= 3;
+		settings.texture_quality = 4; // new one by jsvJesus
 		settings.terrain_quality		= 3;
 		settings.water_quality			= 3;
 		settings.shadows_quality		= 4;
@@ -172,7 +173,8 @@ void FillDefaultSettings( GraphicSettings& settings, r3dDevStrength strength )
 		//settings.antialiasing_quality	= 1;
 		settings.anisotropy_quality		= 4;
 		settings.postprocess_quality	= 3;
-		settings.ssao_quality			= 4;
+		//settings.ssao_quality			= 4;
+		settings.ssao_quality = 5; // new one by jsvJesus
 		break;
 
 	default:

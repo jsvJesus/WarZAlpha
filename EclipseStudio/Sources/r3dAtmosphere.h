@@ -157,6 +157,36 @@ class r3dAtmosphere
 	class GameObject*	RainParticleSystem;
 	char				RainParticleSystemName[ 64 ];
 
+	// weather system by jsvJesus
+	enum WeatherType
+	{
+		WEATHER_CLEAR,
+		WEATHER_CLOUDY,
+		WEATHER_RAIN,
+		WEATHER_STORM,
+		WEATHER_COUNT
+	};
+
+	struct WeatherPreset
+	{
+		float CloudDensityScale;
+		float FogDensityScale;
+		float FogDistanceScale;
+		float RainIntensity;
+	};
+
+	int					bWeatherSystemEnabled;
+	WeatherType			WeatherCurrentType;
+	WeatherType			WeatherTargetType;
+	float				WeatherTransitionDuration;
+	float				WeatherTransitionElapsed;
+	float				WeatherMinDuration;
+	float				WeatherMaxDuration;
+	float				WeatherTimeRemaining;
+	WeatherPreset		WeatherPresets[WEATHER_COUNT];
+	WeatherPreset		WeatherActive;
+	/////////////////////////////////////////////////////
+
   public:
 	r3dAtmosphere()
 	: StaticSkyMesh( 0 )
@@ -184,9 +214,11 @@ class r3dAtmosphere
 
   void  ReloadTextures();
   void	Update();
+  void	UpdateWeather(float dt); // weather system by jsvJesus
 
   void	SetRainParticle( const char* Name );
   void	ClearRainParticle();
+  void	StopRainParticle(); // weather system by jsvJesus
 
   void	EnableStaticSky();
   void	DisableStaticSky();
@@ -195,6 +227,13 @@ class r3dAtmosphere
   
   void	ConvertFog_V0();
   void	ConvertFog_V1();
+
+  // weather system by jsvJesus
+  float	GetWeatherCloudDensityScale() const;
+  float	GetWeatherFogDensityScale() const;
+  float	GetWeatherFogDistanceScale() const;
+  float	GetWeatherRainIntensity() const;
+  ////////////////////////////////////////////
 };
 
 void GetAdjecantSkyPhasesAndLerpT( r3dAtmosphere::SkyPhase *oPhase0, r3dAtmosphere::SkyPhase *oPhase1, float* oLerpT );
@@ -342,3 +381,27 @@ R3D_FORCEINLINE r3dColor r3dAtmosphere::GetCurrentMoonAmbientColor()
 extern int g_OverrideAmbientAndIntensity;
 extern float g_OverrideIntensity;
 extern r3dColor g_OverrideAmbientColor;
+
+// weather system by jsvJesus
+
+R3D_FORCEINLINE float r3dAtmosphere::GetWeatherCloudDensityScale() const
+{
+	return WeatherActive.CloudDensityScale;
+}
+
+R3D_FORCEINLINE float r3dAtmosphere::GetWeatherFogDensityScale() const
+{
+	return WeatherActive.FogDensityScale;
+}
+
+R3D_FORCEINLINE float r3dAtmosphere::GetWeatherFogDistanceScale() const
+{
+	return WeatherActive.FogDistanceScale;
+}
+
+R3D_FORCEINLINE float r3dAtmosphere::GetWeatherRainIntensity() const
+{
+	return WeatherActive.RainIntensity;
+}
+
+/////////////////////////////////////////////////////////////////////////////

@@ -1,12 +1,16 @@
-Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.10.34916.146
-MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Eternity", "..\Eternity\Eternity.vcxproj", "{3D51BE84-6441-4AC7-A73F-587C6B36DDAF}"
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Eternity", "..\Eternity\Eternity.vcproj", "{3D51BE84-6441-4AC7-A73F-587C6B36DDAF}"
+	ProjectSection(ProjectDependencies) = postProject
+		{143F9B67-C223-4F2D-B8F9-B644CA710CA6} = {143F9B67-C223-4F2D-B8F9-B644CA710CA6}
+	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Eclipse Studio", "Studio.vcxproj", "{22AD274B-9E09-431E-94D7-41780F91B239}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Eclipse Studio", "Studio.vcproj", "{22AD274B-9E09-431E-94D7-41780F91B239}"
+	ProjectSection(ProjectDependencies) = postProject
+		{3D51BE84-6441-4AC7-A73F-587C6B36DDAF} = {3D51BE84-6441-4AC7-A73F-587C6B36DDAF}
+	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RakNet", "..\External\RakNet\RakNet.vcxproj", "{143F9B67-C223-4F2D-B8F9-B644CA710CA6}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RakNet", "..\External\RakNet\RakNet.vcproj", "{143F9B67-C223-4F2D-B8F9-B644CA710CA6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -36,8 +40,5 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {E720BCBF-5803-491E-A5A7-54D8C72E3568}
 	EndGlobalSection
 EndGlobal

@@ -580,7 +580,8 @@ void applyGraphicOptionsSoft( uint32_t settingsFlags )
 		//__WorldRenderBias = 0.f;
 		break;
 	case 4:
-		r_anisotropy->SetInt( 8 );
+		//r_anisotropy->SetInt( 8 );
+		r_anisotropy->SetInt(16); // new one by jsvJesus
 		//__WorldRenderBias = 0.f;
 		break;
 	}
@@ -661,6 +662,7 @@ void applyGraphicOptionsSoft( uint32_t settingsFlags )
 	{
 
 		const int MAX_DIR_TEX_SIZE = r_max_texture_dim->GetInt() ? R3D_MIN( r_max_texture_dim->GetInt(), 2048 ) : 2048 ;
+		const int MAX_DIR_TEX_SIZE_HQ = r_max_texture_dim->GetInt() ? R3D_MIN(r_max_texture_dim->GetInt(), 4096) : 4096; // fix by jsvJesus
 
 		switch( r_shadows_quality->GetInt() )
 		{
@@ -692,6 +694,7 @@ void applyGraphicOptionsSoft( uint32_t settingsFlags )
 			break;
 
 		case 3:
+			r_transp_shadows->SetInt(1); // fix by jsvJesus
 			r_terra_shadows->SetInt( 1 );
 			r_shadow_blur->SetInt( 0 );
 			r_dir_sm_size->SetInt( MAX_DIR_TEX_SIZE );
@@ -704,10 +707,18 @@ void applyGraphicOptionsSoft( uint32_t settingsFlags )
 			break;
 
 		case 4:
+			r_transp_shadows->SetInt(1); // fix by jsvJesus
 			r_terra_shadows->SetInt( 1 );
-			r_shadow_blur->SetInt( 1 );
-			r_dir_sm_size->SetInt( MAX_DIR_TEX_SIZE );
-			r_shared_sm_size->SetInt( 1024 );
+			//r_shadow_blur->SetInt( 1 );
+			//r_dir_sm_size->SetInt( MAX_DIR_TEX_SIZE );
+			//r_shared_sm_size->SetInt( 1024 );
+
+			// fix by jsvJesus
+			r_shadow_blur->SetInt(0);
+			r_dir_sm_size->SetInt(MAX_DIR_TEX_SIZE_HQ);
+			r_shared_sm_size->SetInt(2048); 
+			/////////////////////////////////////
+
 			r_shared_sm_cube_size->SetInt( 1024 );
 			r_active_shadow_slices->SetInt( NumShadowSlices );
 			r_shadows->SetInt( 1 );
@@ -855,6 +866,24 @@ void applyGraphicsOptions( uint32_t settingsFlags )
 
 	if( settingsFlags & FrontEndShared::SC_TEXTURE_QUALITY )
 	{
+		// new one by jsvJesus
+		static int deviceMaxTextureDim = 0;
+		if (deviceMaxTextureDim == 0)
+		{
+			deviceMaxTextureDim = r_max_texture_dim->GetInt();
+		}
+
+		if (deviceMaxTextureDim > 0)
+		{
+			const int textureQuality = r_texture_quality->GetInt();
+			const int maxTextureDim = textureQuality >= 4
+				? deviceMaxTextureDim
+				: R3D_MIN(2048, deviceMaxTextureDim);
+
+			r_max_texture_dim->SetInt(maxTextureDim);
+		}
+		//////////////////////////////////////////
+
 		void r3dParticleSystemReloadCachedDataTextures();
 		r3dParticleSystemReloadCachedDataTextures();
 		r3dMaterialLibrary::ReloadMaterialTextures();

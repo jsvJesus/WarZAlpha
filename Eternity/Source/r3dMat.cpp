@@ -902,39 +902,40 @@ enum TexType
 	TT_COUNT
 };
 
-int MinDimmensionTable[ TT_COUNT ][ 3 ] = 
+int MinDimmensionTable[TT_COUNT][4] = // new one by jsvJesus
 {
-	/*TT_DIFFUSE		*/	{  512, 512, 512 } ,
-	/*TT_METALNESS		*/	{  512, 512, 512 } ,
-	/*TT_GLOW			*/	{  512, 512, 512 } ,
-	/*TT_NORMAL			*/	{  512, 512, 512 } ,
-	/*TT_NORMALDETAIL	*/	{  512, 512, 512 } ,
-	/*TT_DENSITYMAP		*/	{  512, 512, 512 } ,
-	/*TT_ROUGHNESS		*/	{  512, 512, 512 } ,
-	/*TT_CAMOUFLAGEMASK	*/	{  512, 512, 512 } ,
-	/*TT_DISTORTION		*/	{  512, 512, 512 } ,
-	/*TT_SPECPOW		*/	{  512, 512, 512 }
-} ;
+	/*TT_DIFFUSE		*/	{  512, 512, 512, 512 } ,
+	/*TT_METALNESS		*/	{  512, 512, 512, 512 } ,
+	/*TT_GLOW			*/	{  512, 512, 512, 512 } ,
+	/*TT_NORMAL			*/	{  512, 512, 512, 512 } ,
+	/*TT_NORMALDETAIL	*/	{  512, 512, 512, 512 } ,
+	/*TT_DENSITYMAP		*/	{  512, 512, 512, 512 } ,
+	/*TT_ROUGHNESS		*/	{  512, 512, 512, 512 } ,
+	/*TT_CAMOUFLAGEMASK	*/	{  512, 512, 512, 512 } ,
+	/*TT_DISTORTION		*/	{  512, 512, 512, 512 } ,
+	/*TT_SPECPOW		*/	{  512, 512, 512, 512 }
+};
 
-int DownScaleTable[ TT_COUNT ][ 3 ] =
+int DownScaleTable[TT_COUNT][4] = // new one by jsvJesus
 {
-	/*TT_DIFFUSE		*/	{ 2, 1, 1 } ,
-	/*TT_METALNESS		*/	{ 2, 2, 1 } ,
-	/*TT_GLOW			*/	{ 2, 2, 1 } ,
-	/*TT_NORMAL			*/	{ 2, 2, 1 } ,
-	/*TT_NORMALDETAIL	*/	{ 2, 2, 1 } ,
-	/*TT_DENSITYMAP		*/	{ 2, 2, 1 } ,
-	/*TT_ROUGHNESS		*/	{ 2, 2, 1 } ,
-	/*TT_CAMOUFLAGEMASK	*/	{ 2, 2, 1 } ,
-	/*TT_DISTORTION		*/	{ 2, 2, 1 } ,
-	/*TT_SPECPOW		*/	{ 2, 2, 1 } 
-} ;
+	/*TT_DIFFUSE		*/	{ 2, 1, 1, 1 } ,
+	/*TT_METALNESS		*/	{ 2, 2, 1, 1 } ,
+	/*TT_GLOW			*/	{ 2, 2, 1, 1 } ,
+	/*TT_NORMAL			*/	{ 2, 2, 1, 1 } ,
+	/*TT_NORMALDETAIL	*/	{ 2, 2, 1, 1 } ,
+	/*TT_DENSITYMAP		*/	{ 2, 2, 1, 1 } ,
+	/*TT_ROUGHNESS		*/	{ 2, 2, 1, 1 } ,
+	/*TT_CAMOUFLAGEMASK	*/	{ 2, 2, 1, 1 } ,
+	/*TT_DISTORTION		*/	{ 2, 2, 1, 1 } ,
+	/*TT_SPECPOW		*/	{ 2, 2, 1, 1 }
+};
 
 static inline int GetMinScaleDim( TexType ttype )
 {
 	r3d_assert( ttype >= 0 && ttype < TT_COUNT ) ;
 
-	int ql = R3D_MAX( R3D_MIN( r_texture_quality->GetInt(), 3 ), 1 ) ;
+	//int ql = R3D_MAX( R3D_MIN( r_texture_quality->GetInt(), 3 ), 1 ) ;
+	int ql = R3D_MAX(R3D_MIN(r_texture_quality->GetInt(), 4), 1); // new one by jsvJesus
 
 	return MinDimmensionTable[ ttype ][ ql - 1 ] ;
 }
@@ -943,7 +944,8 @@ static inline int GetDownScale( TexType ttype )
 {
 	r3d_assert( ttype >= 0 && ttype < TT_COUNT ) ;
 
-	int ql = R3D_MAX( R3D_MIN( r_texture_quality->GetInt(), 3 ), 1 ) ;
+	//int ql = R3D_MAX( R3D_MIN( r_texture_quality->GetInt(), 3 ), 1 ) ;
+	int ql = R3D_MAX(R3D_MIN(r_texture_quality->GetInt(), 4), 1); // new one by jsvJesus
 
 	return DownScaleTable[ ttype ][ ql - 1 ] ;
 }

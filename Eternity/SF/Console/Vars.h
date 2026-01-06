@@ -293,7 +293,8 @@ REG_VAR( r_fullscreen_load		, true			, 0 );		// this value will hold r_fullscree
 REG_VAR( r_apex_enabled			, false			, VF_SAVE );
 
 REG_VAR_C( r_mesh_quality			, 3			, 1, 3, VF_SAVE | VF_CONSTRAINT );
-REG_VAR_C( r_texture_quality		, 2			, 1, 3, VF_SAVE | VF_CONSTRAINT );
+//REG_VAR_C( r_texture_quality		, 2			, 1, 3, VF_SAVE | VF_CONSTRAINT );
+REG_VAR_C(r_texture_quality, 2, 1, 4, VF_SAVE | VF_CONSTRAINT);							// fix by jsvJesus
 REG_VAR_C( r_terrain_quality		, 2			, 1, 3, VF_SAVE | VF_CONSTRAINT );
 REG_VAR_C( r_decoration_quality		, 2			, 1, 3, VF_SAVE | VF_CONSTRAINT );
 REG_VAR_C( r_water_quality			, 2			, 1, 3, VF_SAVE | VF_CONSTRAINT );

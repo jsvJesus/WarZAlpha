@@ -424,7 +424,7 @@ public:
 
 extern void InitializePhysSkeletonCache( int count, float progressStart, float progressEnd ) ;
 extern void DestroyPhysSkeletonCache() ;
-extern r3dPhysSkeleton* AquireCacheSkeleton();
+//extern r3dPhysSkeleton* AquireCacheSkeleton();
 extern void ReleaseCachedPhysSkeleton(r3dPhysSkeleton* skel);
 
 extern void InitializePhysObstacleCache(int count);

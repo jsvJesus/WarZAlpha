@@ -1,5 +1,7 @@
 #include "r3dPCH.h"
 
+#include <functional>
+
 #define R3D_PROBEUNDO_ENABLE 0
 
 #ifndef FINAL_BUILD
@@ -11469,6 +11471,47 @@ void Editor_Level :: ProcessEnvironment()
 
 			SliderY += imgui_DrawFloatGradient( SliderX, SliderY, "Aerial Density", &r3dGameLevel::Environment.Aerial_Density, 360, 200, 0.0f, 1.0f, 10, 10, 2, 2, atmoT );
 			SliderY += imgui_DrawFloatGradient( SliderX, SliderY, "Aerial Distance", &r3dGameLevel::Environment.Aerial_Distance, 360, 200, 0.5f, 1.5f, 10, 10, 2, 2, atmoT );
+
+			// weather system by jsvJesus
+			SliderY += 10.0f;
+			SliderY += imgui_Static(SliderX, SliderY, "Weather");
+
+			SliderY += imgui_Checkbox(SliderX, SliderY, "Weather Enabled", &r3dGameLevel::Environment.bWeatherSystemEnabled, 1);
+
+			static const char* weatherNames[r3dAtmosphere::WEATHER_COUNT] = { "Clear", "Cloudy", "Rain", "Storm" };
+
+			int weatherCurrent = (int)r3dGameLevel::Environment.WeatherCurrentType;
+			int weatherTarget = (int)r3dGameLevel::Environment.WeatherTargetType;
+
+			SliderY += imgui_Value_SliderI(SliderX, SliderY, "Weather Current", &weatherCurrent, 0, r3dAtmosphere::WEATHER_COUNT - 1, "%d");
+			SliderY += imgui_Value_SliderI(SliderX, SliderY, "Weather Target", &weatherTarget, 0, r3dAtmosphere::WEATHER_COUNT - 1, "%d");
+
+			weatherCurrent = R3D_MIN(R3D_MAX(weatherCurrent, 0), r3dAtmosphere::WEATHER_COUNT - 1);
+			weatherTarget = R3D_MIN(R3D_MAX(weatherTarget, 0), r3dAtmosphere::WEATHER_COUNT - 1);
+
+			r3dGameLevel::Environment.WeatherCurrentType = (r3dAtmosphere::WeatherType)weatherCurrent;
+			r3dGameLevel::Environment.WeatherTargetType = (r3dAtmosphere::WeatherType)weatherTarget;
+
+			char weatherLabel[64];
+			sprintf(weatherLabel, "Current: %s", weatherNames[weatherCurrent]);
+			SliderY += imgui_Static(SliderX, SliderY, weatherLabel);
+
+			SliderY += imgui_Value_Slider(SliderX, SliderY, "Weather Transition (s)", &r3dGameLevel::Environment.WeatherTransitionDuration, 0.0f, 300.0f, "%-02.2f", 1);
+			SliderY += imgui_Value_Slider(SliderX, SliderY, "Weather Min Duration (s)", &r3dGameLevel::Environment.WeatherMinDuration, 0.0f, 3600.0f, "%-02.2f", 1);
+			SliderY += imgui_Value_Slider(SliderX, SliderY, "Weather Max Duration (s)", &r3dGameLevel::Environment.WeatherMaxDuration, 0.0f, 3600.0f, "%-02.2f", 1);
+
+			for (int i = 0; i < r3dAtmosphere::WEATHER_COUNT; ++i)
+			{
+				char presetLabel[64];
+				sprintf(presetLabel, "Preset: %s", weatherNames[i]);
+				SliderY += imgui_Static(SliderX, SliderY, presetLabel);
+
+				SliderY += imgui_Value_Slider(SliderX, SliderY, "Cloud Density Scale", &r3dGameLevel::Environment.WeatherPresets[i].CloudDensityScale, 0.0f, 3.0f, "%-02.2f", 1);
+				SliderY += imgui_Value_Slider(SliderX, SliderY, "Fog Density Scale", &r3dGameLevel::Environment.WeatherPresets[i].FogDensityScale, 0.0f, 3.0f, "%-02.2f", 1);
+				SliderY += imgui_Value_Slider(SliderX, SliderY, "Fog Distance Scale", &r3dGameLevel::Environment.WeatherPresets[i].FogDistanceScale, 0.0f, 3.0f, "%-02.2f", 1);
+				SliderY += imgui_Value_Slider(SliderX, SliderY, "Rain Intensity", &r3dGameLevel::Environment.WeatherPresets[i].RainIntensity, 0.0f, 3.0f, "%-02.2f", 1);
+			}
+			///////////////////////////////////////////////////////////////////////////
 		
 			g_pDesktopManager->End();
 		}

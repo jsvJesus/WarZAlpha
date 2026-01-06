@@ -43,8 +43,15 @@ void SetVolumeFogParams()
 		r3dRenderer->SetTex(SkyDome->cubemap->Tex, 7);
 
 		{
-			float t_m = r3dGameLevel::Environment.Fog_Distance.GetFloatValue(time);
-			float Density = -0.05f*r3dGameLevel::Environment.Fog_Density.GetFloatValue(time);
+			//float t_m = r3dGameLevel::Environment.Fog_Distance.GetFloatValue(time);
+			//float Density = -0.05f*r3dGameLevel::Environment.Fog_Density.GetFloatValue(time);
+
+			// weather system by jsvJesus
+			float t_m = r3dGameLevel::Environment.Fog_Distance.GetFloatValue(time) *
+				r3dGameLevel::Environment.GetWeatherFogDistanceScale();
+			float Density = -0.05f * r3dGameLevel::Environment.Fog_Density.GetFloatValue(time) *
+				r3dGameLevel::Environment.GetWeatherFogDensityScale();
+			///////////////////////////////////////////////////////////////////
 
 			Density = Density* 500.0f / powf(400.0f, t_m);
 

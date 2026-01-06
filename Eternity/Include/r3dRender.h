@@ -7,10 +7,21 @@
 #include "pShader.h"
 #include "VShader.h"
 
+#if defined(R3D_USE_DX11)
+#include "r3dRenderDX11.h"
+#endif
+
 class r3dMaterial;
 
 struct R3D_SCREEN_VERTEX;
 struct R3D_DEBUG_VERTEX;
+
+#if defined(R3D_USE_DX11)
+class r3dDX11Texture;
+class r3dDX11RenderTarget;
+class r3dDX11DepthStencil;
+class r3dDX11Buffer;
+#endif
 
 // bitwise flags for SetRenderingMode()
 #define R3D_BLEND_NONE          0
@@ -432,6 +443,10 @@ typedef r3dTL::TArray <D3DXMACRO> ShaderMacros;
 class r3dRenderLayer ;
 extern 	r3dRenderLayer*	r3dRenderer ;
 
+#if defined(R3D_USE_DX11)
+class r3dDX11RenderLayer;
+#endif
+
 // Main 3D Renderer Class
 class r3dRenderLayer
 {
@@ -458,6 +473,11 @@ public:
 	IDirect3D9     	*pd3d;
 
 	D3DPRESENT_PARAMETERS	d3dpp;
+
+#if defined(R3D_USE_DX11)
+	r3dDX11RenderLayer* dx11RenderLayer;
+#endif
+	int CurrentRenderPath;
 
 #if R3D_DEBUG_MULTITHREADING
 	class DeviceWrapper
@@ -1078,6 +1098,9 @@ public:
 	}
 
 	void ReleaseAndReset();
+#if defined(R3D_USE_DX11)
+	virtual void ReleaseDX11();
+#endif
 
 	IDirect3DResource9* Get() const
 	{
@@ -1127,21 +1150,82 @@ public:
 class r3dD3DVertexBufferTunnel : public r3dD3DResourceTunnelT< IDirect3DVertexBuffer9 >
 {
 public:
+#if defined(R3D_USE_DX11)
+	r3dD3DVertexBufferTunnel()
+		: mDX11Buffer(0)
+	{
+	}
+
+	void SetDX11(r3dDX11Buffer* buffer)
+	{
+		mDX11Buffer = buffer;
+	}
+
+	r3dDX11Buffer* GetDX11() const
+	{
+		return mDX11Buffer;
+	}
+
+	virtual void ReleaseDX11();
+#endif
 	void Lock( UINT OffsetToLock, UINT SizeToLock, VOID **ppData, DWORD Flags );
 	void Unlock( );
-
+#if defined(R3D_USE_DX11)
+private:
+	r3dDX11Buffer* mDX11Buffer;
+#endif
 };
 
 class r3dD3DIndexBufferTunnel : public r3dD3DResourceTunnelT< IDirect3DIndexBuffer9 >
 {
 public:
+#if defined(R3D_USE_DX11)
+	r3dD3DIndexBufferTunnel()
+		: mDX11Buffer(0)
+	{
+	}
+
+	void SetDX11(r3dDX11Buffer* buffer)
+	{
+		mDX11Buffer = buffer;
+	}
+
+	r3dDX11Buffer* GetDX11() const
+	{
+		return mDX11Buffer;
+	}
+
+	virtual void ReleaseDX11();
+#endif
 	void Lock( UINT OffsetToLock, UINT SizeToLock, VOID **ppData, DWORD Flags );
 	void Unlock( );
+#if defined(R3D_USE_DX11)
+private:
+	r3dDX11Buffer* mDX11Buffer;
+#endif
 };
 
 class r3dD3DTextureTunnel : public r3dD3DResourceTunnelT< IDirect3DBaseTexture9 >
 {
 public:
+#if defined(R3D_USE_DX11)
+	r3dD3DTextureTunnel()
+		: mDX11Texture(0)
+	{
+	}
+
+	void SetDX11(r3dDX11Texture* texture)
+	{
+		mDX11Texture = texture;
+	}
+
+	r3dDX11Texture* GetDX11() const
+	{
+		return mDX11Texture;
+	}
+
+	virtual void ReleaseDX11();
+#endif
 	IDirect3DBaseTexture9*		AsBaseTex() const ;
 	IDirect3DTexture9*			AsTex2D() const ;
 	IDirect3DCubeTexture9*		AsTexCube() const ;
@@ -1152,6 +1236,10 @@ public:
 
 	void LockRect( UINT Level, D3DLOCKED_RECT *pLockedRect, const RECT *pRect, DWORD Flags );
 	void UnlockRect( UINT Level );
+#if defined(R3D_USE_DX11)
+private:
+	r3dDX11Texture* mDX11Texture;
+#endif
 };
 
 class r3dD3DSurfaceTunnel : r3dD3DResourceTunnelT< IDirect3DSurface9 >
@@ -1160,6 +1248,10 @@ public:
 	R3D_FORCEINLINE
 	r3dD3DSurfaceTunnel()
 	: mFormat( D3DFMT_UNKNOWN )
+#if defined(R3D_USE_DX11)
+		, mDX11RenderTarget(0)
+		, mDX11DepthStencil(0)
+#endif
 	{
 
 	}
@@ -1173,6 +1265,30 @@ public:
 	void Set( IDirect3DSurface9* resource );
 	int ReleaseAndReset();
 
+#if defined(R3D_USE_DX11)
+	void SetDX11RenderTarget(r3dDX11RenderTarget* renderTarget)
+	{
+		mDX11RenderTarget = renderTarget;
+	}
+
+	void SetDX11DepthStencil(r3dDX11DepthStencil* depthStencil)
+	{
+		mDX11DepthStencil = depthStencil;
+	}
+
+	r3dDX11RenderTarget* GetDX11RenderTarget() const
+	{
+		return mDX11RenderTarget;
+	}
+
+	r3dDX11DepthStencil* GetDX11DepthStencil() const
+	{
+		return mDX11DepthStencil;
+	}
+
+	virtual void ReleaseDX11();
+#endif
+
 	using Parent::Get;
 	using Parent::Valid;
 	using Parent::operator ->;
@@ -1181,6 +1297,10 @@ public:
 
 private:
 	D3DFORMAT mFormat ;
+#if defined(R3D_USE_DX11)
+	r3dDX11RenderTarget* mDX11RenderTarget;
+	r3dDX11DepthStencil* mDX11DepthStencil;
+#endif
 };
 
 class r3dDeviceTunnel

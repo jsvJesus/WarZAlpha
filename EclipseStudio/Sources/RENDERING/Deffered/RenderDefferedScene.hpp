@@ -126,7 +126,8 @@ void SyncSkyParams()
 	hoffman.m_sunIntensity				= r3dGameLevel::Environment.GetCurrentSunIntensityCoef();
 	hoffman.m_turbitity					= r3dGameLevel::Environment.GetCurrentTurbitity();
 	hoffman.m_fCloudsScale				= r3dGameLevel::Environment.SkyDomeCloudsScale;
-	hoffman.m_fCloudDensity				= r3dGameLevel::Environment.SkyDomeCloudsDensity;
+	//hoffman.m_fCloudDensity				= r3dGameLevel::Environment.SkyDomeCloudsDensity;
+	hoffman.m_fCloudDensity = r3dGameLevel::Environment.SkyDomeCloudsDensity * r3dGameLevel::Environment.GetWeatherCloudDensityScale(); // weather system by jsvJesus
 
 	hoffman.m_fSkySunsetBumpness		= r3dGameLevel::Environment.SkySunsetBumpness;
 	hoffman.m_fSkySunsetOffset			= r3dGameLevel::Environment.SkySunsetOffset;

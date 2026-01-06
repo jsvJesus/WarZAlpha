@@ -1349,10 +1349,10 @@ void ProcessPlayerMovement(obj_Player* pl, bool editor_debug )
 				accelaration *= pl->m_SpeedBoost;
 			}
 			
-#ifndef FINAL_BUILD
+//#ifndef FINAL_BUILD
 			if(gUserProfile.ProfileData.isDevAccount && Keyboard->IsPressed(kbsLeftAlt))
 				accelaration *= 5.0f;
-#endif
+//#endif
 
 			// 		STORE_CATEGORIES equippedItemCat = wpn ? wpn->getCategory() : storecat_INVALID;;
 			// 		if(equippedItemCat == storecat_SUPPORT || equippedItemCat == storecat_MG)

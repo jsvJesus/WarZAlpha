@@ -129,11 +129,11 @@
 #endif
 #endif
 
-#ifndef FINAL_BUILD
-#define ENABLE_AUTODESK_NAVIGATION 1
-#else
-#define ENABLE_AUTODESK_NAVIGATION 0
-#endif
+//#ifndef FINAL_BUILD
+//#define ENABLE_AUTODESK_NAVIGATION 1 // AutodeskNav (true)
+//#else
+#define ENABLE_AUTODESK_NAVIGATION 0 // AutodeskNav (false)
+//#endif
 
 #ifdef FINAL_BUILD
 #define R3D_ALLOW_TEMPORAL_SSAO 0
