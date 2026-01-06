@@ -1679,19 +1679,40 @@ int r3dRenderLayer::SetMode(int XRes, int YRes, int BPP, int Flags, int RenderPa
 #if defined(R3D_USE_DX11)
 	if (RenderPath == R3D_PATH_DX11)
 	{
+		D3DDISPLAYMODE mode;
+		int targetWidth = XRes;
+		int targetHeight = YRes;
+
 		if (!dx11RenderLayer)
 		{
 			dx11RenderLayer = new r3dDX11RenderLayer();
 		}
 
-		if (CurrentRenderPath != R3D_PATH_DX11)
+		if (pd3d)
+		{
+			isWindowed = (Flags & R3DSetMode_Windowed) ? 1 : 0;
+			if (!AdjustWindowSize(XRes, YRes, BPP, isWindowed, mode))
+			{
+				r3dOutToLog("Adjust Window Size failed, xres=%d, yres=%d, bpp=%d, windowed=%d\n", XRes, YRes, BPP, isWindowed);
+				return FALSE;
+			}
+
+			targetWidth = mode.Width;
+			targetHeight = mode.Height;
+
+			r3dOutToLog("r3dRenderLayer::SetMode(DX11 x=%d,y=%d,bpp=%d,windowed=%d,hz=%d)\n", mode.Width, mode.Height, BPP, Flags, mode.RefreshRate);
+}
+
+		if (!dx11RenderLayer->IsInitialized() || CurrentRenderPath != R3D_PATH_DX11)
 		{
 			dx11RenderLayer->Init(HLibWin, XRes, YRes, BPP, Flags);
+			dx11RenderLayer->Init(HLibWin, targetWidth, targetHeight, BPP, Flags);
 			CurrentRenderPath = R3D_PATH_DX11;
 		}
 		else
 		{
 			dx11RenderLayer->Resize(XRes, YRes, BPP, Flags);
+			dx11RenderLayer->Resize(targetWidth, targetHeight, BPP, Flags);
 		}
 
 		return TRUE;

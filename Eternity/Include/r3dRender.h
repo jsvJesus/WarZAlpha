@@ -8,7 +8,7 @@
 #include "VShader.h"
 
 #if defined(R3D_USE_DX11)
-#include "r3dRenderDX11.h"
+#include "../Eternity/Source/r3dRenderDX11.h"
 #endif
 
 class r3dMaterial;
