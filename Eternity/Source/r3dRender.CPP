@@ -8,6 +8,11 @@
 #include <initguid.h>
 #include <wbemidl.h>
 
+#if defined(R3D_USE_DX11)
+#include <d3d11.h>
+#include <dxgi.h>
+#endif
+
 #ifndef WO_SERVER
 #include "NVApi/nvapi.h"
 #define R3D_NVAPI "NVApi: "
@@ -2714,6 +2719,25 @@ void r3dRenderLayer::SetViewportInternal ( const D3DVIEWPORT9* viewport )
 	ViewMinZ = viewport->MinZ ;
 	ViewMaxZ = viewport->MaxZ ;
 
+#if defined(R3D_USE_DX11)
+	if (CurrentRenderPath == R3D_PATH_DX11 && dx11RenderLayer && dx11RenderLayer->IsInitialized())
+	{
+		ID3D11DeviceContext* context = dx11RenderLayer->GetDeviceContext();
+		if (context)
+		{
+			D3D11_VIEWPORT vp11;
+			vp11.TopLeftX = (float)viewport->X;
+			vp11.TopLeftY = (float)viewport->Y;
+			vp11.Width = (float)viewport->Width;
+			vp11.Height = (float)viewport->Height;
+			vp11.MinDepth = viewport->MinZ;
+			vp11.MaxDepth = viewport->MaxZ;
+			context->RSSetViewports(1, &vp11);
+		}
+		return;
+	}
+#endif
+
 #ifndef FINAL_BUILD
 	if( AllowNullViewport && r_null_viewport->GetInt() )
 	{
@@ -3002,6 +3026,42 @@ void r3dRenderLayer::EndFrame()
 
 void r3dRenderLayer::GetBackBufferViewport( float* X, float* Y, float* Width, float* Height )
 {
+#if defined(R3D_USE_DX11)
+	if (CurrentRenderPath == R3D_PATH_DX11 && dx11RenderLayer && dx11RenderLayer->IsInitialized())
+	{
+		float W = 0.0f;
+		float H = 0.0f;
+		IDXGISwapChain* swapChain = dx11RenderLayer->GetSwapChain();
+		if (swapChain)
+		{
+			DXGI_SWAP_CHAIN_DESC desc;
+			if (SUCCEEDED(swapChain->GetDesc(&desc)))
+			{
+				W = (float)desc.BufferDesc.Width;
+				H = (float)desc.BufferDesc.Height;
+			}
+		}
+
+		if (W == 0.0f || H == 0.0f)
+		{
+			W = (float)dx11RenderLayer->GetBackBufferWidth();
+			H = (float)dx11RenderLayer->GetBackBufferHeight();
+		}
+
+		if (W == 0.0f || H == 0.0f)
+		{
+			W = ScreenW;
+			H = ScreenH;
+		}
+
+		*X = W * r_screen_offset_x->GetFloat();
+		*Y = H * r_screen_offset_y->GetFloat();
+		*Width = W * r_screen_scale_x->GetFloat();
+		*Height = H * r_screen_scale_y->GetFloat();
+		return;
+	}
+#endif
+
 	float W = (float)r3dRenderer->d3dpp.BackBufferWidth;
 	float H = (float)r3dRenderer->d3dpp.BackBufferHeight;
 
@@ -3022,6 +3082,76 @@ void r3dRenderLayer::SetBackBufferViewport()
 
 void r3dRenderLayer::StartRender(int bClear, bool clearToWhite)
 {
+#if defined(R3D_USE_DX11)
+	if (CurrentRenderPath == R3D_PATH_DX11 && dx11RenderLayer && dx11RenderLayer->IsInitialized())
+	{
+		ID3D11DeviceContext* context = dx11RenderLayer->GetDeviceContext();
+
+		if (bClear && context)
+		{
+			r3dColor clearColor = clearToWhite ? r3dColor(255, 255, 255, 255) : Fog.Color;
+			float clearValues[4] =
+			{
+				clearColor.R / 255.0f,
+				clearColor.G / 255.0f,
+				clearColor.B / 255.0f,
+				clearColor.A / 255.0f
+			};
+
+			ID3D11RenderTargetView* rtv = dx11RenderLayer->GetBackBufferRTV();
+			ID3D11DepthStencilView* dsv = dx11RenderLayer->GetDepthStencilView();
+			bool releaseRTV = false;
+			bool releaseDSV = false;
+
+			if (!rtv || !dsv)
+			{
+				context->OMGetRenderTargets(1, &rtv, &dsv);
+				releaseRTV = rtv != NULL;
+				releaseDSV = dsv != NULL;
+			}
+
+			if (rtv)
+			{
+				context->ClearRenderTargetView(rtv, clearValues);
+			}
+
+			UINT clearFlags = D3D11_CLEAR_DEPTH;
+			if (CurrentBPP != 16)
+			{
+				clearFlags |= D3D11_CLEAR_STENCIL;
+			}
+
+			if (dsv)
+			{
+				context->ClearDepthStencilView(dsv, clearFlags, r3dRenderer->GetClearZValue(), 0);
+			}
+
+			if (releaseRTV)
+			{
+				rtv->Release();
+			}
+
+			if (releaseDSV)
+			{
+				dsv->Release();
+			}
+		}
+
+		ResetViewport();
+
+		CurrentRenderingMode = R3D_BLEND_NONE;
+		CurrentMaterialID = -999;
+
+		RModeStackTop = 0;
+
+		SetTex(NULL);
+		SetMaterial(NULL);
+		SetRenderingMode(R3D_BLEND_NOALPHA | R3D_BLEND_ZC | R3D_BLEND_ZW);
+
+		return;
+	}
+#endif
+
 	static int ClearFlag = D3DCLEAR_TARGET|D3DCLEAR_ZBUFFER|D3DCLEAR_STENCIL;
 	static int _FlagSet = 0;
 
@@ -4193,8 +4323,15 @@ void r3dRenderLayer::EndRender( bool present /*= false*/ )
 
 		R3DPROFILE_END("r3dRenderLayer::EndRender:Flush");
 
-		D3D_V( d3dc._SetVertexShader(0) );
-		d3dc._SetDecl(R3D_DEBUG_VERTEX::getDecl());
+		//D3D_V( d3dc._SetVertexShader(0) );
+		//d3dc._SetDecl(R3D_DEBUG_VERTEX::getDecl());
+#if defined(R3D_USE_DX11)
+		if (!(CurrentRenderPath == R3D_PATH_DX11 && dx11RenderLayer && dx11RenderLayer->IsInitialized()))
+#endif
+		{
+			D3D_V(d3dc._SetVertexShader(0));
+			d3dc._SetDecl(R3D_DEBUG_VERTEX::getDecl());
+		}
 	}
 
 	// Present the backbuffer contents to the display
@@ -4202,6 +4339,30 @@ void r3dRenderLayer::EndRender( bool present /*= false*/ )
 		return;
 
 	gRenderFrameCounter++; // end of frame
+
+#if defined(R3D_USE_DX11)
+	if (CurrentRenderPath == R3D_PATH_DX11 && dx11RenderLayer && dx11RenderLayer->IsInitialized())
+	{
+		IDXGISwapChain* swapChain = dx11RenderLayer->GetSwapChain();
+		HRESULT hr = E_FAIL;
+
+		if (swapChain)
+		{
+			R3DPROFILE_START("r3dRenderLayer::EndRender:Present");
+			hr = swapChain->Present(0, 0);
+			R3DPROFILE_END("r3dRenderLayer::EndRender:Present");
+		}
+
+		ProcessDeviceQueue(r3dGetTime(), 0.033f);
+
+		if (FAILED(hr))
+		{
+			r3dOutToLog("r3d: DX11 present failed (0x%08X)\n", (unsigned int)hr);
+		}
+
+		return;
+	}
+#endif
 
 	HRESULT hr = D3DERR_DEVICELOST ;
 
