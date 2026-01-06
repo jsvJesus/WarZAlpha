@@ -5,12 +5,24 @@
       <Configuration>Debug</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug_DX11|Win32">
+      <Configuration>Debug_DX11</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Final|Win32">
       <Configuration>Final</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="Final_DX11|Win32">
+      <Configuration>Final_DX11</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Release|Win32">
       <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release_DX11|Win32">
+      <Configuration>Release_DX11</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
   </ItemGroup>
@@ -29,13 +41,33 @@
     <CharacterSet>MultiByte</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Final_DX11|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <PlatformToolset>v120</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_DX11|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v120</PlatformToolset>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v120</PlatformToolset>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_DX11|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <PlatformToolset>v120</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
@@ -49,11 +81,23 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Final_DX11|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
+  </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug_DX11|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
+  </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release_DX11|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
   </ImportGroup>
@@ -66,12 +110,27 @@
     <IntDir>$(Configuration)\</IntDir>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_DX11|Win32'">
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+    <IntDir>$(Configuration)\</IntDir>
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
     <IntDir>$(Configuration)\</IntDir>
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_DX11|Win32'">
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+    <IntDir>$(Configuration)\</IntDir>
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Final|Win32'">
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+    <IntDir>$(Configuration)\</IntDir>
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Final_DX11|Win32'">
     <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
     <IntDir>$(Configuration)\</IntDir>
     <LinkIncremental>false</LinkIncremental>
@@ -129,6 +188,59 @@
       <Command />
     </PostBuildEvent>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_DX11|Win32'">
+    <Midl>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MkTypLibCompatible>true</MkTypLibCompatible>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <TargetEnvironment>Win32</TargetEnvironment>
+      <TypeLibraryName>.\Release_DX11/Studio.tlb</TypeLibraryName>
+    </Midl>
+    <ClCompile>
+      <AdditionalOptions>/MP %(AdditionalOptions)</AdditionalOptions>
+      <Optimization>MaxSpeed</Optimization>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OmitFramePointers>true</OmitFramePointers>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
+      <AdditionalIncludeDirectories>.\..\External;.\..\External\dxsdk\Include;.\..\External\PhysX\include;.\Sources;..\eternity\include;..\GameEngine;..\External\Scaleform\Include;..\External\Scaleform\Src;..\External\ChilKat\Include;..\External\SteamWorks;..\External\Apex\framework\public;..\External\Apex\public;..\External\Apex\framework\public\PhysX3;..\External\Apex\NxParameterized\public;..\External\Apex;..\External\Kynapse\sdk\include;..\External\AutodeskNav\sdk\include;..\External\AutodeskNav\integration;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;R3D_USE_DX11;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <PrecompiledHeader />
+      <PrecompiledHeaderFile>r3dPCH.h</PrecompiledHeaderFile>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <CallingConvention>Cdecl</CallingConvention>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Culture>0x0409</Culture>
+    </ResourceCompile>
+    <Link>
+      <AdditionalOptions>/MACHINE:I386 /largeaddressaware %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>dbghelp.lib;winmm.lib;ws2_32.lib;strsafe.lib;d3dx9.lib;d3d9.lib;dinput8.lib;dxguid.lib;xinput.lib;iphlpapi.lib;fmodex_vc.lib;fmod_event.lib;fmod_event_net.lib;libjpeg.lib;ChilkatRel.lib;rpcrt4.lib;dnsapi.lib;crypt32.lib;Shlwapi.lib;odbc32.lib;odbccp32.lib;wbemuuid.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(SolutionDir)\..\..\bin\Studio_dx11.exe</OutputFile>
+      <AdditionalLibraryDirectories>.\..\External\dxsdk\lib;../External/dbghelp/lib;../External/CrashRpt/Lib;../External/fmod;Z:\WarZ\src\External\PhysX\Lib\win32;../External/Chilkat/Libs;../External/jpeg-6b/lib/Win32/Msvc80/Release_Static;../External/Scaleform/Lib;../External/VMProtect;../External/Apex/lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Windows</SubSystem>
+      <OptimizeReferences />
+      <LinkTimeCodeGeneration />
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <DataExecutionPrevention />
+    </Link>
+    <PostBuildEvent>
+      <Command />
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Midl>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -161,6 +273,50 @@
       <AdditionalOptions>/MACHINE:I386 %(AdditionalOptions)</AdditionalOptions>
       <AdditionalDependencies>dbghelp.lib;winmm.lib;ws2_32.lib;strsafe.lib;d3dx9d.lib;d3d9.lib;dinput8.lib;dxguid.lib;xinput.lib;iphlpapi.lib;fmodex_vc.lib;fmod_event.lib;fmod_event_net.lib;ChilkatDbg.lib;rpcrt4.lib;dnsapi.lib;crypt32.lib;Shlwapi.lib;odbc32.lib;odbccp32.lib;wbemuuid.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(SolutionDir)\..\..\bin\Studio_d.exe</OutputFile>
+      <AdditionalLibraryDirectories>.\..\External\dxsdk\lib;../External/dbghelp/lib;../External/fmod;../External/PhysX/lib/Win32;../External/Scaleform/Lib;../External/Chilkat/Libs;../External/jpeg-6b/lib/Win32/Msvc80/Debug_Static;../External/VMProtect;../External/Apex/lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <ManifestFile>$(IntDir)$(TargetFileName)_d.intermediate.manifest</ManifestFile>
+      <IgnoreSpecificDefaultLibraries>libcmt.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Windows</SubSystem>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <DataExecutionPrevention />
+    </Link>
+    <PostBuildEvent>
+      <Command />
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_DX11|Win32'">
+    <Midl>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MkTypLibCompatible>true</MkTypLibCompatible>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <TargetEnvironment>Win32</TargetEnvironment>
+      <TypeLibraryName>.\Debug_DX11/Studio.tlb</TypeLibraryName>
+    </Midl>
+    <ClCompile>
+      <AdditionalOptions>/MP %(AdditionalOptions)</AdditionalOptions>
+      <Optimization>Disabled</Optimization>
+      <InlineFunctionExpansion>Default</InlineFunctionExpansion>
+      <AdditionalIncludeDirectories>.\..\External;.\..\External\dxsdk\Include;.\..\External\PhysX\include;.\Sources;..\eternity\include;..\GameEngine;..\External\Scaleform\Include;..\External\Scaleform\Src;..\External\ChilKat\Include;..\External\SteamWorks;..\External\Apex\framework\public;..\External\Apex\public;..\External\Apex\framework\public\PhysX3;..\External\Apex\NxParameterized\public;..\External\Apex;..\External\Kynapse\sdk\include;..\External\AutodeskNav\sdk\include;..\External\AutodeskNav\integration;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;R3D_USE_DX11;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>r3dPCH.h</PrecompiledHeaderFile>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Culture>0x0409</Culture>
+    </ResourceCompile>
+    <Link>
+      <AdditionalOptions>/MACHINE:I386 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>dbghelp.lib;winmm.lib;ws2_32.lib;strsafe.lib;d3dx9d.lib;d3d9.lib;dinput8.lib;dxguid.lib;xinput.lib;iphlpapi.lib;fmodex_vc.lib;fmod_event.lib;fmod_event_net.lib;ChilkatDbg.lib;rpcrt4.lib;dnsapi.lib;crypt32.lib;Shlwapi.lib;odbc32.lib;odbccp32.lib;wbemuuid.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(SolutionDir)\..\..\bin\Studio_d_dx11.exe</OutputFile>
       <AdditionalLibraryDirectories>.\..\External\dxsdk\lib;../External/dbghelp/lib;../External/fmod;../External/PhysX/lib/Win32;../External/Scaleform/Lib;../External/Chilkat/Libs;../External/jpeg-6b/lib/Win32/Msvc80/Debug_Static;../External/VMProtect;../External/Apex/lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ManifestFile>$(IntDir)$(TargetFileName)_d.intermediate.manifest</ManifestFile>
       <IgnoreSpecificDefaultLibraries>libcmt.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -219,6 +375,58 @@
       <OptimizeReferences>true</OptimizeReferences>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <RandomizedBaseAddress>true</RandomizedBaseAddress>
+      <DataExecutionPrevention />
+    </Link>
+    <PostBuildEvent>
+      <Command />
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Final_DX11|Win32'">
+    <Midl>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MkTypLibCompatible>true</MkTypLibCompatible>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <TargetEnvironment>Win32</TargetEnvironment>
+      <TypeLibraryName>.\Final_DX11/Studio.tlb</TypeLibraryName>
+    </Midl>
+    <ClCompile>
+      <AdditionalOptions>/MP %(AdditionalOptions)</AdditionalOptions>
+      <Optimization>MaxSpeed</Optimization>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OmitFramePointers>true</OmitFramePointers>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <AdditionalIncludeDirectories>.\..\External;.\..\External\dxsdk\Include;.\..\External\PhysX\include;.\Sources;..\eternity\include;..\GameEngine;..\External\Scaleform\Include;..\External\Scaleform\Src;..\External\ChilKat\Include;..\External\SteamWorks;..\External\Apex\framework\public;..\External\Apex\public;..\External\Apex\framework\public\PhysX3;..\External\Apex\NxParameterized\public;..\External\Apex;..\External\Kynapse\sdk\include;..\External\AutodeskNav\sdk\include;..\External\AutodeskNav\integration;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;FINAL_BUILD;R3D_USE_DX11;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <PrecompiledHeader />
+      <PrecompiledHeaderFile>r3dPCH.h</PrecompiledHeaderFile>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <CallingConvention>Cdecl</CallingConvention>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Culture>0x0409</Culture>
+    </ResourceCompile>
+    <Link>
+      <AdditionalOptions>/MACHINE:I386 /largeaddressaware %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>dbghelp.lib;winmm.lib;ws2_32.lib;strsafe.lib;d3dx9.lib;d3d9.lib;dinput8.lib;dxguid.lib;xinput.lib;iphlpapi.lib;fmodex_vc.lib;fmod_event.lib;fmod_event_net.lib;libjpeg.lib;ChilkatRel.lib;rpcrt4.lib;dnsapi.lib;crypt32.lib;Shlwapi.lib;odbc32.lib;odbccp32.lib;wbemuuid.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(SolutionDir)\..\..\bin\WarZ_dx11.exe</OutputFile>
+      <AdditionalLibraryDirectories>.\..\External\dxsdk\lib;../External/dbghelp/lib;../External/CrashRpt/Lib;../External/fmod;../External/PhysX/lib/Win32;../External/Scaleform/Lib;../External/Chilkat/Libs;../External/jpeg-6b/lib/Win32/Msvc80/Release_Static;../External/VMProtect;../External/Apex/lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Windows</SubSystem>
+      <OptimizeReferences>true</OptimizeReferences>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention />
     </Link>
     <PostBuildEvent>
@@ -417,6 +625,7 @@
     <ClCompile Include="..\GameEngine\TrueNature\Terrain_Erosion.cpp" />
     <ClCompile Include="r3dPCH.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+	  <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug_DX11|Win32'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Sources\Backend\HttpDownload.cpp" />
     <ClCompile Include="Sources\Backend\WOBackendAPI.cpp" />

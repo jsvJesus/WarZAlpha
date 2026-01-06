@@ -372,6 +372,9 @@
     <ClCompile Include="Source\r3dEternityWebBrowser.cpp">
       <Filter>Browser</Filter>
     </ClCompile>
+    <ClCompile Include="Source\r3dRenderDX11.cpp">
+      <Filter>3D: Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Include\atlasDesc.h">
@@ -745,6 +748,9 @@
     </ClInclude>
     <ClInclude Include="Source\r3dEternityWebBrowser.h">
       <Filter>Browser</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\r3dRenderDX11.h">
+      <Filter>3D: Source</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
