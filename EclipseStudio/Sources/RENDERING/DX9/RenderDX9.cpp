@@ -7,6 +7,7 @@
 #include "../../ObjectsCode/world/WaterPlane.H"
 
 #include "GameCommon.h"
+#include "DirectXMathHelpers.hpp"
 
 r3dVector	SunVector;
 float		SunVectorXZProj;
@@ -109,7 +110,7 @@ void DrawDepthEffectMask ()
 	r3dRenderer->pd3ddev->SetSamplerState( 4, D3DSAMP_ADDRESSU,   D3DTADDRESS_CLAMP );
 	r3dRenderer->pd3ddev->SetSamplerState( 4, D3DSAMP_ADDRESSV,   D3DTADDRESS_CLAMP );
 
-	D3DXVECTOR4 CamVector(gCam.x,gCam.y,gCam.z,1.0f);
+	DirectX::XMFLOAT4 CamVector(gCam.x, gCam.y, gCam.z, 1.0f);
 	
 	float Shade = R3D_CLAMP(-SunVector.Dot(r3dVector(0,1,0)),0.0f, 1.0f);
 
@@ -117,7 +118,7 @@ void DrawDepthEffectMask ()
 
 	float ShadeAddit = 0.0f;//(float(r3dRenderer->AmbientColor.B)/255.0f);
 
-	D3DXVECTOR4 TintVector(55.0f/255.0f*Shade, 153.0f/255.0f*Shade, 221.0f/255.0f*Shade, ShadeAddit);
+	DirectX::XMFLOAT4 TintVector(55.0f / 255.0f * Shade, 153.0f / 255.0f * Shade, 221.0f / 255.0f * Shade, ShadeAddit);
 	
 	r3dRenderer->pd3ddev->SetPixelShaderConstantF(  9, (float *)&TintVector,  1 );
 	r3dRenderer->pd3ddev->SetPixelShaderConstantF(  10, (float *)&CamVector,  1 );
@@ -125,11 +126,12 @@ void DrawDepthEffectMask ()
 	r3dRenderer->SetPixelShader("PS_ZDRAW");
 	r3dRenderer->SetVertexShader("VS_ZDRAW");
 
-	D3DXMATRIX 	mWorld;
-	D3DXMATRIX ShaderMat;
-	D3DXMatrixIdentity(&mWorld);
-	ShaderMat =  mWorld * 	r3dRenderer->ViewProjMatrix;
-	D3DXMatrixTranspose( &ShaderMat, &ShaderMat );
+	DirectX::XMFLOAT4X4 mWorld = r3dDX9::IdentityMatrix();
+	DirectX::XMMATRIX shaderXM = DirectX::XMMatrixMultiply(
+		r3dDX9::ToXM(mWorld),
+		r3dDX9::ToXMMatrix(r3dRenderer->ViewProjMatrix));
+	DirectX::XMFLOAT4X4 ShaderMat;
+	r3dDX9::StoreMatrix(&ShaderMat, DirectX::XMMatrixTranspose(shaderXM));
 
 	r3dRenderer->pd3ddev->SetVertexShaderConstantF( 0, (float *)&ShaderMat,  4 );
 
@@ -212,7 +214,7 @@ void DrawDepthEffect()
 	r3dRenderer->SetTex(DepthBuffer->Tex,4);
 
 	float DepthZ = r3dRenderer->FarClip * 0.9375f;
-	D3DXVECTOR4 CamVector(gCam.x,gCam.y,gCam.z,1.0f/DepthZ);
+	DirectX::XMFLOAT4 CamVector(gCam.x, gCam.y, gCam.z, 1.0f / DepthZ);
 
 	r3dRenderer->pd3ddev->SetRenderState(D3DRS_STENCILENABLE, false);
 	r3dRenderer->pd3ddev->SetSamplerState( 4, D3DSAMP_ADDRESSU,   D3DTADDRESS_CLAMP );
@@ -222,7 +224,7 @@ void DrawDepthEffect()
 	float fShallowColor_Depth[4];
 	float fAttenColor_Dist[4];
 	float fBumpness_RefrIndex_TileSize[4];
-	D3DXVECTOR4 texLerp;
+	DirectX::XMFLOAT4 texLerp;
 	float ic = 1.0f / 255.0f;
 
 	fdeepColor_LakeHeight[0] = wb->uDeepColor.R * ic;	fdeepColor_LakeHeight[1] = wb->uDeepColor.G * ic;	fdeepColor_LakeHeight[2] = wb->uDeepColor.B * ic;	fdeepColor_LakeHeight[3] = height-deltaHeight;
@@ -238,9 +240,9 @@ void DrawDepthEffect()
 	r3dRenderer->pd3ddev->SetPixelShaderConstantF( 18, &texLerp.x,  1 );
 
 
-	D3DXVECTOR4 NearFarPlane(r3dRenderer->NearClip, r3dRenderer->FarClip, 0, 0);
+	DirectX::XMFLOAT4 NearFarPlane(r3dRenderer->NearClip, r3dRenderer->FarClip, 0, 0);
 	r3dRenderer->pd3ddev->SetPixelShaderConstantF(  10, (float *)&CamVector,  1 );
-	D3DXVECTOR4 halfInvRes( 1.f / r3dRenderer->ViewW, 1.f / r3dRenderer->ViewH, 0.f, 0.f );
+	DirectX::XMFLOAT4 halfInvRes(1.f / r3dRenderer->ViewW, 1.f / r3dRenderer->ViewH, 0.f, 0.f);
 	r3dRenderer->pd3ddev->SetPixelShaderConstantF(  11, (float *)&halfInvRes,  1 );
 	r3dRenderer->pd3ddev->SetPixelShaderConstantF(  12, (float *)&NearFarPlane,  1 );
 
@@ -249,12 +251,12 @@ void DrawDepthEffect()
 	r3dRenderer->SetVertexShader("VS_ZDRAW_FULL");
 	r3dRenderer->SetPixelShader("PS_ZDRAW_FULL");
 
-	D3DXMATRIX 	mWorld;
-	D3DXMATRIX ShaderMat;
-	D3DXMatrixIdentity(&mWorld);
-	ShaderMat =  mWorld * 	r3dRenderer->ViewProjMatrix;
-	//D3DXMatrixInverse(&ShaderMat, NULL, &ShaderMat );
-	D3DXMatrixTranspose( &ShaderMat, &ShaderMat );
+	DirectX::XMFLOAT4X4 mWorld = r3dDX9::IdentityMatrix();
+	DirectX::XMMATRIX shaderXM = DirectX::XMMatrixMultiply(
+		r3dDX9::ToXM(mWorld),
+		r3dDX9::ToXMMatrix(r3dRenderer->ViewProjMatrix));
+	DirectX::XMFLOAT4X4 ShaderMat;
+	r3dDX9::StoreMatrix(&ShaderMat, DirectX::XMMatrixTranspose(shaderXM));
 
 	r3dRenderer->pd3ddev->SetVertexShaderConstantF( 0, (float *)&ShaderMat,  4 );
 

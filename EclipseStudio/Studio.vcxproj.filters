@@ -1646,6 +1646,9 @@
     <ClInclude Include="Sources\resource.h" />
     <ClInclude Include="Sources\SteamHelper.h" />
     <ClInclude Include="Sources\Editors\TerrainMods.h" />
+    <ClInclude Include="Sources\RENDERING\DX9\DirectXMathHelpers.hpp">
+      <Filter>2: Game\Rendering\PC/Xbox</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Sources\resource.rc" />

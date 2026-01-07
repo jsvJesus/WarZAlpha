@@ -4,6 +4,7 @@
 #include "../SF/Console/Config.h"
 #include "../../ObjectsCode/Nature/obj_LocalColorCorrection.h"
 #include "../Deffered/HUDFilters.h"
+#include "DirectXMathHelpers.hpp"
 
 float SpecPower = 16.0f;
 float FOVRange = 150.0f;
@@ -37,7 +38,7 @@ static const int		MAX_SSAO_RINGS				= 4;
 static const int		MAX_SSAO_SEGMENTS			= 8;
 static const int		MAX_SSAO_SAMPLES			= MAX_SSAO_RINGS*MAX_SSAO_SEGMENTS;
 
-static D3DXVECTOR3		g_vAORays[ MAX_SSAO_SAMPLES ];
+static DirectX::XMFLOAT3		g_vAORays[MAX_SSAO_SAMPLES];
 
 namespace
 {
@@ -45,7 +46,7 @@ namespace
 	const unsigned int	AO_NUM_DIRS = 5;
 	const unsigned int  AO_NUM_STEPS = 3;
 	const unsigned int	AO_DIRS_CONST_COUNT = AO_NUM_DIRS / 2 + (AO_NUM_STEPS & 1 );
-	D3DXVECTOR4			g_vAODirs[ AO_DIRS_CONST_COUNT ];
+	DirectX::XMFLOAT4			g_vAODirs[AO_DIRS_CONST_COUNT];
 
 	r3dTexture *					SSAO_RotTex					= NULL;
 	r3dTexture *					SSAO_RotTex2D				= NULL;
@@ -67,7 +68,10 @@ static void FillAORays ()
 		float r = sinf( (ring) * fDeltaRingAngle );
 		float y = cosf( (ring) * fDeltaRingAngle );
 		for( unsigned int seg = 0; seg < (dwNumSphereSegments+1); seg++ )
-			D3DXVec3Normalize ( &g_vAORays[ iRay++ ], &D3DXVECTOR3 ( r*cosf( seg * fDeltaSegAngle ), y, r*sinf( seg * fDeltaSegAngle ) ) );
+		{
+			DirectX::XMFLOAT3 ray(r * cosf(seg * fDeltaSegAngle), y, r * sinf(seg * fDeltaSegAngle));
+			g_vAORays[iRay++] = r3dDX9::Normalize(ray);
+		}
 	}
 
 	{
@@ -407,7 +411,7 @@ void RenderSSAORefEffect()
 
  float noiseScaleK = r_half_scale_ssao->GetInt() ? 0.5f : 1.0f;
 
- D3DXVECTOR4 vconst = D3DXVECTOR4( 0.5f / r3dRenderer->ScreenW, 0.5f / r3dRenderer->ScreenH, r3dRenderer->ScreenW * 0.25f * noiseScaleK, r3dRenderer->ScreenH * 0.25f * noiseScaleK );
+ DirectX::XMFLOAT4 vconst(0.5f / r3dRenderer->ScreenW, 0.5f / r3dRenderer->ScreenH, r3dRenderer->ScreenW * 0.25f * noiseScaleK, r3dRenderer->ScreenH * 0.25f * noiseScaleK);
  r3dRenderer->pd3ddev->SetVertexShaderConstantF(  0, (float *)&vconst,  1 );
 
  // mat proj
@@ -417,9 +421,9 @@ void RenderSSAORefEffect()
 
  const SSAOSettings& sts = g_SSAOSettings[ SSM_REF ];
 
- D3DXVECTOR4 pconst0 = D3DXVECTOR4(sts.Radius/fFar, sts.Radius/fFar*r3dRenderer->ScreenH/r3dRenderer->ScreenW, sts.DepthRange/fFar, 1.0f / fFar );
- D3DXVECTOR4 pconst1 = D3DXVECTOR4(0.f, 0.f, sts.RadiusExpandStart / fFar, fFar * sts.RadiusExpandCoef );
- D3DXVECTOR4 pconst2 = D3DXVECTOR4( sts.Contrast, sts.Brightness * sts.Contrast - 1.5f * sts.Contrast + 0.5f, 0.f, 0.f ); 
+ DirectX::XMFLOAT4 pconst0(sts.Radius / fFar, sts.Radius / fFar * r3dRenderer->ScreenH / r3dRenderer->ScreenW, sts.DepthRange / fFar, 1.0f / fFar);
+ DirectX::XMFLOAT4 pconst1(0.f, 0.f, sts.RadiusExpandStart / fFar, fFar * sts.RadiusExpandCoef);
+ DirectX::XMFLOAT4 pconst2(sts.Contrast, sts.Brightness * sts.Contrast - 1.5f * sts.Contrast + 0.5f, 0.f, 0.f);
 
  r3dRenderer->pd3ddev->SetPixelShaderConstantF(  0, (float *)&pconst0,  1 );
  r3dRenderer->pd3ddev->SetPixelShaderConstantF(  1, (float *)&pconst1,  1 );
@@ -445,7 +449,7 @@ void RenderSSAORefEffect()
  r3dRenderer->pd3ddev->SetRenderState(D3DRS_COLORWRITEENABLE, 	0xffffffff );
 }
 
-D3DXMATRIX g_PrevSSAO_View ;
+DirectX::XMFLOAT4X4 g_PrevSSAO_View;
 int g_PrevSSAO_Valid ;
 
 int g_SSAO_Temporal_Reveal ;
@@ -455,7 +459,7 @@ int g_SSAO_ResetCount ;
 void FinalizeSSAORender()
 {
 	g_PrevSSAO_Valid = 1 ;
-	g_PrevSSAO_View = r3dRenderer->ViewMatrix ;
+	r3dDX9::StoreMatrix(&g_PrevSSAO_View, r3dDX9::ToXMMatrix(r3dRenderer->ViewMatrix));
 }
 
 float GetDefaultSSAOValue()
@@ -535,7 +539,7 @@ void RenderSSAOEffect( bool lightWeight )
 
 	extern r3dScreenBuffer* gBuffer_Depth;
 
-	D3DXVECTOR4 vconst = D3DXVECTOR4( 0.5f / gBuffer_Depth->Width, 0.5f / gBuffer_Depth->Height, gBuffer_Depth->Width * 0.25f * noiseScaleK, gBuffer_Depth->Height * 0.25f * noiseScaleK );
+	DirectX::XMFLOAT4 vconst(0.5f / gBuffer_Depth->Width, 0.5f / gBuffer_Depth->Height, gBuffer_Depth->Width * 0.25f * noiseScaleK, gBuffer_Depth->Height * 0.25f * noiseScaleK);
 	r3dRenderer->pd3ddev->SetVertexShaderConstantF(  0, (float *)&vconst,  1 );
 
 	// mat proj
@@ -560,27 +564,27 @@ void RenderSSAOEffect( bool lightWeight )
 
 	if( !g_PrevSSAO_Valid )
 	{
-		D3DXMatrixIdentity( &g_PrevSSAO_View ) ;
+		g_PrevSSAO_View = r3dDX9::IdentityMatrix();
 	}
 
 	float aspect = 1.0f ;
 
-	D3DXVECTOR4 pconsts[ RAYS_START + SSAO_ALT_DETAIL_NUM_RAYS ];
+	DirectX::XMFLOAT4 pconsts[RAYS_START + SSAO_ALT_DETAIL_NUM_RAYS];
 
 	// float4      g_vZScale0_ColorControl     : register ( c0 );
-	pconsts[ 0 ] = D3DXVECTOR4( sts.DepthRange / sts.Radius, 128.0f / sts.Radius, sts.Contrast, sts.Brightness * sts.Contrast - 1.5f * sts.Contrast + 0.5f );
+	pconsts[0] = DirectX::XMFLOAT4(sts.DepthRange / sts.Radius, 128.0f / sts.Radius, sts.Contrast, sts.Brightness * sts.Contrast - 1.5f * sts.Contrast + 0.5f);
 	// float4      g_vProjScaleTrans           : register ( c1 );
-	pconsts[ 1 ] = D3DXVECTOR4( 0.5f*r3dRenderer->ProjMatrix._11, -0.5f*r3dRenderer->ProjMatrix._22, 0.5f, 0.5f );
+	pconsts[1] = DirectX::XMFLOAT4(0.5f * r3dRenderer->ProjMatrix._11, -0.5f * r3dRenderer->ProjMatrix._22, 0.5f, 0.5f);
 	// float4      g_vInvProjScaleTrans        : register ( c2 );
-	pconsts[ 2 ] = D3DXVECTOR4( 2.0f / r3dRenderer->ProjMatrix._11, -2.0f / r3dRenderer->ProjMatrix._22, -1.0f / r3dRenderer->ProjMatrix._11, 1.0f / r3dRenderer->ProjMatrix._22 );
+	pconsts[2] = DirectX::XMFLOAT4(2.0f / r3dRenderer->ProjMatrix._11, -2.0f / r3dRenderer->ProjMatrix._22, -1.0f / r3dRenderer->ProjMatrix._11, 1.0f / r3dRenderer->ProjMatrix._22);
 	// float4      g_vInvRes_DepthFadeRange    : register ( c3 );
-	pconsts[ 3 ] = D3DXVECTOR4( 1.0f / gBuffer_Depth->Width, 1.0f / gBuffer_Depth->Height, 0.985f * fFar, 0.99f * fFar );
+	pconsts[3] = DirectX::XMFLOAT4(1.0f / gBuffer_Depth->Width, 1.0f / gBuffer_Depth->Height, 0.985f * fFar, 0.99f * fFar);
 	// float4      g_vExpandRanges             : register ( c4 );
-	pconsts[ 4 ] = D3DXVECTOR4( sts.RadiusExpandStart, sts.DetailRadiusExpandStart, sts.RadiusExpandCoef, sts.DetailRadiusExpandCoef );
+	pconsts[4] = DirectX::XMFLOAT4(sts.RadiusExpandStart, sts.DetailRadiusExpandStart, sts.RadiusExpandCoef, sts.DetailRadiusExpandCoef);
 	// float4      g_vDetail_Fade_ZScale1      : register ( c5 );
-	pconsts[ 5 ] = D3DXVECTOR4( sts.DetailStrength, sts.DetailFadeOut * sts.DetailRadius, sts.DetailDepthRange / sts.DetailRadius, 128.0f / sts.DetailRadius );
+	pconsts[5] = DirectX::XMFLOAT4(sts.DetailStrength, sts.DetailFadeOut * sts.DetailRadius, sts.DetailDepthRange / sts.DetailRadius, 128.0f / sts.DetailRadius);
 	// float4      g_vTempoCtrl                : register ( c6 );
-	pconsts[ 6 ] = D3DXVECTOR4( 0.00125f * sts.TemporalTolerance, 1.f / 512.f, aspect / 512.f, 0.f );
+	pconsts[6] = DirectX::XMFLOAT4(0.00125f * sts.TemporalTolerance, 1.f / 512.f, aspect / 512.f, 0.f);
 
 	if( doSSAOTemporalOptimize )
 	{
@@ -588,21 +592,29 @@ void RenderSSAOEffect( bool lightWeight )
 	}
 
 	// float4x3    g_mViewMtx                  : register ( c7 );
-	D3DXMatrixTranspose( (D3DXMATRIX*)&pconsts[7], &r3dRenderer->ViewMatrix );
+	r3dDX9::StoreMatrix(reinterpret_cast<DirectX::XMFLOAT4X4*>(&pconsts[7]),
+		DirectX::XMMatrixTranspose(r3dDX9::ToXMMatrix(r3dRenderer->ViewMatrix)));
 	// ^^^^
 	// NOTE : last row is overwritten below
 
-	D3DXMATRIX toPrevViewMtx = r3dRenderer->InvViewMatrix * g_PrevSSAO_View ;
+	DirectX::XMMATRIX toPrevViewXM = DirectX::XMMatrixMultiply(
+		r3dDX9::ToXMMatrix(r3dRenderer->InvViewMatrix),
+		r3dDX9::ToXM(g_PrevSSAO_View));
+	DirectX::XMFLOAT4X4 toPrevViewMtx;
+	r3dDX9::StoreMatrix(&toPrevViewMtx, toPrevViewXM);
 
 	// float4x3    g_mToPrevViewMtx    : register ( c10 );
-	D3DXMatrixTranspose( (D3DXMATRIX*)&pconsts[10], &toPrevViewMtx );
+	r3dDX9::StoreMatrix(reinterpret_cast<DirectX::XMFLOAT4X4*>(&pconsts[10]),
+		DirectX::XMMatrixTranspose(r3dDX9::ToXM(toPrevViewMtx)));
 	// ^^^^
 	// NOTE : last row is overwritten below
 
 	// float4x3    g_mFromPrevViewMtx  : register ( c13 );
-	D3DXMATRIX fromPrevViewMtx ;
-	D3DXMatrixInverse( &fromPrevViewMtx, NULL, &toPrevViewMtx ) ;
-	D3DXMatrixTranspose( (D3DXMATRIX*)&pconsts[13], &fromPrevViewMtx );
+	DirectX::XMVECTOR fromPrevDet;
+	DirectX::XMFLOAT4X4 fromPrevViewMtx;
+	r3dDX9::StoreMatrix(&fromPrevViewMtx, DirectX::XMMatrixInverse(&fromPrevDet, r3dDX9::ToXM(toPrevViewMtx)));
+	r3dDX9::StoreMatrix(reinterpret_cast<DirectX::XMFLOAT4X4*>(&pconsts[13]),
+		DirectX::XMMatrixTranspose(r3dDX9::ToXM(fromPrevViewMtx)));
 	// ^^^^
 	// NOTE : last row is overwritten below
 
@@ -610,53 +622,55 @@ void RenderSSAOEffect( bool lightWeight )
 
 	if( !lightWeight )
 	{
-		pconsts[ RAYS_START + r++ ] = D3DXVECTOR4(-0.18486f, 0.32808f, 0.00708f, 0 );
-		pconsts[ RAYS_START + r++ ] = D3DXVECTOR4( 0.22890f, 0.93380f,-0.09171f, 0 );
-		pconsts[ RAYS_START + r++ ] = D3DXVECTOR4(-0.36097f, 0.18230f,-0.38227f, 0 );
-		pconsts[ RAYS_START + r++ ] = D3DXVECTOR4( 0.06232f, 0.32664f, 0.21049f, 0 );
-		pconsts[ RAYS_START + r++ ] = D3DXVECTOR4( 0.68342f, 0.25225f,-0.06311f, 0 );
-		pconsts[ RAYS_START + r++ ] = D3DXVECTOR4(-0.05478f, 0.09994f, 0.34463f, 0 );
-		pconsts[ RAYS_START + r++ ] = D3DXVECTOR4( 0.01732f, 0.36483f,-0.49192f, 0 );
-		pconsts[ RAYS_START + r++ ] = D3DXVECTOR4(-0.72131f, 0.22451f,-0.09716f, 0 );
-		pconsts[ RAYS_START + r++ ] = D3DXVECTOR4( 0.32283f, 0.33296f, 0.11536f, 0 );
-		pconsts[ RAYS_START + r++ ] = D3DXVECTOR4(-0.27977f, 0.18833f, 0.16797f, 0 );
-		pconsts[ RAYS_START + r++ ] = D3DXVECTOR4(-0.50663f, 0.08494f, 0.63250f, 0 );
-		pconsts[ RAYS_START + r++ ] = D3DXVECTOR4( 0.35578f, 0.11564f, 0.50909f, 0 );
-		pconsts[ RAYS_START + r++ ] = D3DXVECTOR4( 0.54817f, 0.23470f,-0.61668f, 0 );
-		pconsts[ RAYS_START + r++ ] = D3DXVECTOR4(-0.15970f, 0.08904f,-0.66253f, 0 );
-		pconsts[ RAYS_START + r++ ] = D3DXVECTOR4( 0.73055f, 0.08323f, 0.30949f, 0 );
-		pconsts[ RAYS_START + r++ ] = D3DXVECTOR4(-0.68126f, 0.50000f, 0.10878f, 0 );
+		pconsts[RAYS_START + r++] = DirectX::XMFLOAT4(-0.18486f, 0.32808f, 0.00708f, 0);
+		pconsts[RAYS_START + r++] = DirectX::XMFLOAT4(0.22890f, 0.93380f, -0.09171f, 0);
+		pconsts[RAYS_START + r++] = DirectX::XMFLOAT4(-0.36097f, 0.18230f, -0.38227f, 0);
+		pconsts[RAYS_START + r++] = DirectX::XMFLOAT4(0.06232f, 0.32664f, 0.21049f, 0);
+		pconsts[RAYS_START + r++] = DirectX::XMFLOAT4(0.68342f, 0.25225f, -0.06311f, 0);
+		pconsts[RAYS_START + r++] = DirectX::XMFLOAT4(-0.05478f, 0.09994f, 0.34463f, 0);
+		pconsts[RAYS_START + r++] = DirectX::XMFLOAT4(0.01732f, 0.36483f, -0.49192f, 0);
+		pconsts[RAYS_START + r++] = DirectX::XMFLOAT4(-0.72131f, 0.22451f, -0.09716f, 0);
+		pconsts[RAYS_START + r++] = DirectX::XMFLOAT4(0.32283f, 0.33296f, 0.11536f, 0);
+		pconsts[RAYS_START + r++] = DirectX::XMFLOAT4(-0.27977f, 0.18833f, 0.16797f, 0);
+		pconsts[RAYS_START + r++] = DirectX::XMFLOAT4(-0.50663f, 0.08494f, 0.63250f, 0);
+		pconsts[RAYS_START + r++] = DirectX::XMFLOAT4(0.35578f, 0.11564f, 0.50909f, 0);
+		pconsts[RAYS_START + r++] = DirectX::XMFLOAT4(0.54817f, 0.23470f, -0.61668f, 0);
+		pconsts[RAYS_START + r++] = DirectX::XMFLOAT4(-0.15970f, 0.08904f, -0.66253f, 0);
+		pconsts[RAYS_START + r++] = DirectX::XMFLOAT4(0.73055f, 0.08323f, 0.30949f, 0);
+		pconsts[RAYS_START + r++] = DirectX::XMFLOAT4(-0.68126f, 0.50000f, 0.10878f, 0);
 	}
 
 	if( detailEnable || lightWeight )
 	{
-		pconsts[ RAYS_START + r++ ] = D3DXVECTOR4(-0.01209f, 0.95443f, 0.11314f, 0 );
-		pconsts[ RAYS_START + r++ ] = D3DXVECTOR4( 0.79393f, 0.23041f, 0.11043f, 0 );
-		pconsts[ RAYS_START + r++ ] = D3DXVECTOR4(-0.77869f, 0.26835f,-0.35691f, 0 );
-		pconsts[ RAYS_START + r++ ] = D3DXVECTOR4(-0.24429f, 0.15942f, 0.46862f, 0 );
-		pconsts[ RAYS_START + r++ ] = D3DXVECTOR4( 0.32674f, 0.51379f,-0.52337f, 0 );
-		pconsts[ RAYS_START + r++ ] = D3DXVECTOR4( 0.34767f, 0.07975f, 0.67386f, 0 );
-		pconsts[ RAYS_START + r++ ] = D3DXVECTOR4(-0.13244f, 0.06251f,-0.58013f, 0 );
-		pconsts[ RAYS_START + r++ ] = D3DXVECTOR4(-0.30083f, 0.50000f, 0.09436f, 0 );
+		pconsts[RAYS_START + r++] = DirectX::XMFLOAT4(-0.01209f, 0.95443f, 0.11314f, 0);
+		pconsts[RAYS_START + r++] = DirectX::XMFLOAT4(0.79393f, 0.23041f, 0.11043f, 0);
+		pconsts[RAYS_START + r++] = DirectX::XMFLOAT4(-0.77869f, 0.26835f, -0.35691f, 0);
+		pconsts[RAYS_START + r++] = DirectX::XMFLOAT4(-0.24429f, 0.15942f, 0.46862f, 0);
+		pconsts[RAYS_START + r++] = DirectX::XMFLOAT4(0.32674f, 0.51379f, -0.52337f, 0);
+		pconsts[RAYS_START + r++] = DirectX::XMFLOAT4(0.34767f, 0.07975f, 0.67386f, 0);
+		pconsts[RAYS_START + r++] = DirectX::XMFLOAT4(-0.13244f, 0.06251f, -0.58013f, 0);
+		pconsts[RAYS_START + r++] = DirectX::XMFLOAT4(-0.30083f, 0.50000f, 0.09436f, 0);
 	}
 
 	r3d_assert( r == NUM_RAYS );
 
 	for( int i = 0, e = RADIUS_SPLIT; i < e; i ++ )
 	{
-		pconsts[ RAYS_START + i ] *= sts.Radius;
+		r3dDX9::Scale(&pconsts[RAYS_START + i], sts.Radius);
 	}
 
 	for( int i = RADIUS_SPLIT, e = NUM_RAYS; i < e; i ++ )
 	{
-		pconsts[ RAYS_START + i ] *= sts.DetailRadius;
+		r3dDX9::Scale(&pconsts[RAYS_START + i], sts.DetailRadius);
 	}
 
 	if( !r_optimized_ssao->GetInt() )
 	{
 		for( int i = 0, e = NUM_RAYS; i < e; i ++ )
 		{
-			D3DXVec4Transform( pconsts + RAYS_START + i, pconsts + RAYS_START + i, &r3dRenderer->ViewMatrix );
+			DirectX::XMFLOAT4& ray = pconsts[RAYS_START + i];
+			DirectX::XMStoreFloat4(&ray, DirectX::XMVector4Transform(DirectX::XMLoadFloat4(&ray),
+				r3dDX9::ToXMMatrix(r3dRenderer->ViewMatrix)));
 		}
 	}
 
@@ -743,7 +757,7 @@ void RenderSSAOEffect ()
 
 static void SetupScreenTexDSP( int contNum )
 {
-	D3DXVECTOR4 vconst = D3DXVECTOR4( 0.5f / r3dRenderer->ScreenW, 0.5f / r3dRenderer->ScreenH, 0.f, 0.f );
+	DirectX::XMFLOAT4 vconst(0.5f / r3dRenderer->ScreenW, 0.5f / r3dRenderer->ScreenH, 0.f, 0.f);
 	r3dRenderer->pd3ddev->SetVertexShaderConstantF(  contNum, (float *)&vconst, 1  );
 }
 
@@ -857,21 +871,28 @@ void CompositeSSAO( r3dScreenBuffer* currSSAO )
 
 	const float HISTORY_DEPTH = sts.TemporalHistoryDepth ;
 
-	r3dTL::TFixedArray< D3DXVECTOR4, 10 > psConsts ;
+	r3dTL::TFixedArray< DirectX::XMFLOAT4, 10 > psConsts;
 
 	// float4   gSettings            : register ( c0 ) ;
-	psConsts[ 0 ] = D3DXVECTOR4( HISTORY_DEPTH / ( HISTORY_DEPTH + 1.f ), 1.0f / ( HISTORY_DEPTH + 1.f ), 0.f, 0.125f * sts.TemporalTolerance ) ;
+	psConsts[0] = DirectX::XMFLOAT4(HISTORY_DEPTH / (HISTORY_DEPTH + 1.f), 1.0f / (HISTORY_DEPTH + 1.f), 0.f, 0.125f * sts.TemporalTolerance);
 	// float4   g_vProjScaleTrans    : register ( c1 ) ;
-	psConsts[ 1 ] = D3DXVECTOR4( 0.5f*r3dRenderer->ProjMatrix._11, -0.5f*r3dRenderer->ProjMatrix._22, 0.5f, 0.5f );
+	psConsts[1] = DirectX::XMFLOAT4(0.5f * r3dRenderer->ProjMatrix._11, -0.5f * r3dRenderer->ProjMatrix._22, 0.5f, 0.5f);
 	// float4   g_vInvProjScaleTrans : register ( c2 ) ;
-	psConsts[ 2 ] = D3DXVECTOR4( 2.0f / r3dRenderer->ProjMatrix._11, -2.0f / r3dRenderer->ProjMatrix._22, -1.0f / r3dRenderer->ProjMatrix._11, 1.0f / r3dRenderer->ProjMatrix._22 );
+	psConsts[2] = DirectX::XMFLOAT4(2.0f / r3dRenderer->ProjMatrix._11, -2.0f / r3dRenderer->ProjMatrix._22, -1.0f / r3dRenderer->ProjMatrix._11, 1.0f / r3dRenderer->ProjMatrix._22);
 	// float4x3 g_vToPrevViewMtx     : register ( c3 ) ;
-	D3DXMATRIX toPrevViewMtx = r3dRenderer->InvViewMatrix * g_PrevSSAO_View ;
-	D3DXMatrixTranspose( (D3DXMATRIX*)&psConsts[3], &toPrevViewMtx );
+	DirectX::XMMATRIX toPrevViewXM = DirectX::XMMatrixMultiply(
+		r3dDX9::ToXMMatrix(r3dRenderer->InvViewMatrix),
+		r3dDX9::ToXM(g_PrevSSAO_View));
+	DirectX::XMFLOAT4X4 toPrevViewMtx;
+	r3dDX9::StoreMatrix(&toPrevViewMtx, toPrevViewXM);
+	r3dDX9::StoreMatrix(reinterpret_cast<DirectX::XMFLOAT4X4*>(&psConsts[3]),
+		DirectX::XMMatrixTranspose(r3dDX9::ToXM(toPrevViewMtx)));
 	// float4x3 g_vFromPrevViewMtx   : register ( c6 ) ;
-	D3DXMATRIX fromPrevViewMtx ;
-	D3DXMatrixInverse( &fromPrevViewMtx, NULL, &toPrevViewMtx ) ;
-	D3DXMatrixTranspose( (D3DXMATRIX*)&psConsts[6], &fromPrevViewMtx );
+	DirectX::XMVECTOR fromPrevDet;
+	DirectX::XMFLOAT4X4 fromPrevViewMtx;
+	r3dDX9::StoreMatrix(&fromPrevViewMtx, DirectX::XMMatrixInverse(&fromPrevDet, r3dDX9::ToXM(toPrevViewMtx)));
+	r3dDX9::StoreMatrix(reinterpret_cast<DirectX::XMFLOAT4X4*>(&psConsts[6]),
+		DirectX::XMMatrixTranspose(r3dDX9::ToXM(fromPrevViewMtx)));
 
 	D3D_V( r3dRenderer->pd3ddev->SetPixelShaderConstantF( 0, &psConsts[ 0 ].x, psConsts.COUNT ) ) ;
 
@@ -890,7 +911,7 @@ void CompositeSSAO( r3dScreenBuffer* currSSAO )
 		D3D_V( r3dRenderer->pd3ddev->SetSamplerState( i, D3DSAMP_ADDRESSV,   D3DTADDRESS_CLAMP ) );
 	}
 
-	D3DXVECTOR4 vconst = D3DXVECTOR4( 0.5f / r3dRenderer->ScreenW, 0.5f / r3dRenderer->ScreenH, resK, resK ) ;
+	DirectX::XMFLOAT4 vconst(0.5f / r3dRenderer->ScreenW, 0.5f / r3dRenderer->ScreenH, resK, resK);
 	r3dRenderer->pd3ddev->SetVertexShaderConstantF( 0, (float *)&vconst, 1 ) ;
 
 	r3dDrawFullScreenQuad( !!HalfScale ) ;
@@ -917,7 +938,7 @@ void BlurSSAO(r3dScreenBuffer *SourceTex, r3dScreenBuffer *TempTex)
 
 	int Normals = !!r_ssao_blur_w_normals->GetInt() ;
 
-	D3DXVECTOR4 vconst = D3DXVECTOR4( 0.5f / r3dRenderer->ScreenW, 0.5f / r3dRenderer->ScreenH, 1.0f, 1.0f );
+	DirectX::XMFLOAT4 vconst(0.5f / r3dRenderer->ScreenW, 0.5f / r3dRenderer->ScreenH, 1.0f, 1.0f);
 	r3dRenderer->pd3ddev->SetVertexShaderConstantF(  0, (float *)&vconst,  1 );
 
 	r3dRenderer->SetVertexShader("VS_SSAO"); 
@@ -929,7 +950,7 @@ void BlurSSAO(r3dScreenBuffer *SourceTex, r3dScreenBuffer *TempTex)
 	char SSAOBlurPSName[ 32 ];
 	GetSSAOBlurPSName( SSAOBlurPSName, tapCount, 0, Normals );
 
-	D3DXVECTOR4 pconsts[2];
+	DirectX::XMFLOAT4 pconsts[2];
 
 	D3D_V( r3dRenderer->pd3ddev->SetRenderState( D3DRS_COLORWRITEENABLE, D3DCOLORWRITEENABLE_RED ) );
 
@@ -960,7 +981,7 @@ void BlurSSAO(r3dScreenBuffer *SourceTex, r3dScreenBuffer *TempTex)
 
 		const SSAOSettings& sts = g_SSAOSettings[ r_ssao_method->GetInt() ];
 
-		pconsts[0] = D3DXVECTOR4( -sts.BlurDepthSensitivity, sts.BlurStrength, 1.0f / r3dRenderer->ScreenW, 0.0f );
+		pconsts[0] = DirectX::XMFLOAT4(-sts.BlurDepthSensitivity, sts.BlurStrength, 1.0f / r3dRenderer->ScreenW, 0.0f);
 
 		r3dRenderer->pd3ddev->SetPixelShaderConstantF(  0, (float *)pconsts,  1 );
 
@@ -979,7 +1000,7 @@ void BlurSSAO(r3dScreenBuffer *SourceTex, r3dScreenBuffer *TempTex)
 
 		r3dRenderer->SetPixelShader( SSAOBlurPSName );
 
-		pconsts[0] = D3DXVECTOR4( -sts.BlurDepthSensitivity, sts.BlurStrength, 0.0f, 1.0f / r3dRenderer->ScreenH );
+		pconsts[0] = DirectX::XMFLOAT4(-sts.BlurDepthSensitivity, sts.BlurStrength, 0.0f, 1.0f / r3dRenderer->ScreenH);
 
 		r3dRenderer->pd3ddev->SetPixelShaderConstantF( 0, (float *)pconsts, 1 );
 

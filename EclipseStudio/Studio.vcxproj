@@ -625,7 +625,7 @@
     <ClCompile Include="..\GameEngine\TrueNature\Terrain_Erosion.cpp" />
     <ClCompile Include="r3dPCH.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
-	  <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug_DX11|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug_DX11|Win32'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Sources\Backend\HttpDownload.cpp" />
     <ClCompile Include="Sources\Backend\WOBackendAPI.cpp" />
@@ -1068,6 +1068,7 @@
     <ClInclude Include="Sources\RENDERING\Deffered\RenderDefferedScene.hpp" />
     <ClInclude Include="Sources\RENDERING\Deffered\rendershadowmap.hpp" />
     <ClInclude Include="Sources\RENDERING\Deffered\VisibilityGrid.h" />
+    <ClInclude Include="Sources\RENDERING\DX9\DirectXMathHelpers.hpp" />
     <ClInclude Include="Sources\RENDERING\DX9\DrawWorld.hpp" />
     <ClInclude Include="Sources\RENDERING\DX9\RenderDX9.h" />
     <ClInclude Include="Sources\RENDERING\Probes\ProbeMaster.h" />
