@@ -1,6 +1,4 @@
 # This section will describe what was changed in this source code.
-
-This section will describe what was changed in this source code.
 1. Transition to D3DX11:
 	1) Refactor DirectX types and functions:
 		- Added DirectXMath helper utilities to centralize XM load/store, transpose/inverse, and scaling operations for DX9 rendering code.
