@@ -3,6 +3,9 @@
 #include "r3dTypeTuples.h"
 #include "..\..\..\GameEngine\gameobjects\GameObj.h"
 
+#include <DirectXMath.h>
+static_assert(sizeof(DirectX::XMFLOAT4) == 16, "XMFLOAT4 must stay 16 bytes for shader packing.");
+
 #ifdef FINAL_BUILD
 #define R3D_ALLOW_LIGHT_PROBES 0
 #else
@@ -43,12 +46,12 @@ struct Probe
 	};
 
 	typedef r3dTL::TFixedArray< r3dPoint3D, NUM_DIRS > FixedDirArr;
-	typedef r3dTL::TFixedArray< D3DXVECTOR4, NUM_DIRS > FixedFloat4Arr;
+	typedef r3dTL::TFixedArray< DirectX::XMFLOAT4, NUM_DIRS > FixedFloat4Arr;
 	typedef r3dTL::TFixedArray< UINT16, NUM_DIRS > FixedUINT16Arr;
 	typedef r3dTL::TFixedArray< UINT32, NUM_DIRS > FixedUINT32Arr;
 	typedef r3dTL::TFixedArray< float, NUM_DIRS > FixedFloatArr;
 
-	typedef r3dTL::TFixedArray< D3DXVECTOR4, NUM_LOCAL_VPL > FixedLocalVPLSHArr;
+	typedef r3dTL::TFixedArray< DirectX::XMFLOAT4, NUM_LOCAL_VPL > FixedLocalVPLSHArr;
 	typedef r3dTL::TFixedArray< ProbeIdx, NUM_LOCAL_VPL > FixedLocalProbeIdxArr;
 
 	// for for any given direction in radians
@@ -65,7 +68,7 @@ struct Probe
 	FixedLocalVPLSHArr 		SH_LocalVPLsB;
 	FixedLocalProbeIdxArr	SH_LocalVPLProbeIndexes;
 
-	D3DXVECTOR3				DynamicLightsRGB;
+	DirectX::XMFLOAT3		DynamicLightsRGB;
 
 	FixedFloatArr SkyVisibility;
 
@@ -150,7 +153,7 @@ public:
 
 	typedef r3dTL::T2DArray< ProbeTile > ProbeMap;
 	typedef r3dTL::TArray< const ProbeTile* > ConstProbeTileArray;
-	typedef r3dTL::TFixedArray< D3DXVECTOR4, Probe::NUM_DIRS > BasisArray;
+	typedef r3dTL::TFixedArray< DirectX::XMFLOAT4, Probe::NUM_DIRS > BasisArray;
 	typedef r3dTL::TFixedArray< r3dVertexBuffer*, Probe::NUM_DIRS > SHProjectVertexBuffers;
 	typedef r3dTL::TArray< ProbeRasterSamples > ProbeRasterSamplesVolume;
 	typedef r3dTL::T2DArray< int > ProbeVolumeTileDirtyArr;
@@ -257,7 +260,7 @@ public:
 
 	struct SkyDirectColors
 	{
-		r3dTL::TFixedArray< D3DXVECTOR4, Probe::NUM_DIRS > DirColor;
+		r3dTL::TFixedArray< DirectX::XMFLOAT4, Probe::NUM_DIRS > DirColor;
 	};
 
 	typedef r3dTL::TFixedArray< r3dTexture*, Probe::NUM_DIRS > DirectionTextures;
@@ -509,13 +512,13 @@ private:
 
 	DirectionTextures		m_DirectionVolumeTextures;
 
-	D3DXVECTOR4				m_SkyDomeSH_R;
-	D3DXVECTOR4				m_SkyDomeSH_G;
-	D3DXVECTOR4				m_SkyDomeSH_B;
+	DirectX::XMFLOAT4		m_SkyDomeSH_R;
+	DirectX::XMFLOAT4		m_SkyDomeSH_G;
+	DirectX::XMFLOAT4		m_SkyDomeSH_B;
 
-	D3DXVECTOR4				m_SunSH_R;
-	D3DXVECTOR4				m_SunSH_G;
-	D3DXVECTOR4				m_SunSH_B;
+	DirectX::XMFLOAT4		m_SunSH_R;
+	DirectX::XMFLOAT4		m_SunSH_G;
+	DirectX::XMFLOAT4		m_SunSH_B;
 
 	BasisArray				m_BasisSHArray;
 

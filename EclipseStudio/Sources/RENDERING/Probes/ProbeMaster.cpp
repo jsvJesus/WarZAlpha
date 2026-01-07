@@ -17,6 +17,17 @@
 
 #if R3D_ALLOW_LIGHT_PROBES
 
+using DirectX::XMFLOAT3;
+using DirectX::XMFLOAT4;
+using DirectX::XMMATRIX;
+using DirectX::XMVECTOR;
+
+static inline XMVECTOR LoadFloat3(const XMFLOAT3& v) { return DirectX::XMLoadFloat3(&v); }
+static inline XMVECTOR LoadFloat4(const XMFLOAT4& v) { return DirectX::XMLoadFloat4(&v); }
+static inline void StoreFloat3(XMFLOAT3* out, DirectX::FXMVECTOR v) { DirectX::XMStoreFloat3(out, v); }
+static inline void StoreFloat4(XMFLOAT4* out, DirectX::FXMVECTOR v) { DirectX::XMStoreFloat4(out, v); }
+static inline XMVECTOR LoadPoint3(const r3dPoint3D& v, float w = 0.f) { return DirectX::XMVectorSet(v.x, v.y, v.z, w); }
+
 IMPLEMENT_CLASS( ProbeProxy, "ProbeProxy", "Object" );
 AUTOREGISTER_CLASS( ProbeProxy );
 
@@ -60,7 +71,7 @@ static float Integrate( float (&fn)( float, float ), int dirId );
 static Bytes* g_SampleSphericalSource;
 static float SampleSpherical( float th, float ph );
 
-static D3DXVECTOR3 g_HemisphereNormal;
+static XMFLOAT3 g_HemisphereNormal;
 static float SampleHemisphereLighting( float th, float ph );
 
 template< typename T >
@@ -306,9 +317,9 @@ Probe::Probe()
 {
 	for( int i = 0 , e  = Probe::NUM_DIRS; i < e; i ++ )
 	{
-		SH_BounceR [ i ] = D3DXVECTOR4( 0, 0, 0, 0 );
-		SH_BounceG [ i ] = D3DXVECTOR4( 0, 0, 0, 0 );
-		SH_BounceB [ i ] = D3DXVECTOR4( 0, 0, 0, 0 );
+		SH_BounceR[i] = XMFLOAT4(0, 0, 0, 0);
+		SH_BounceG[i] = XMFLOAT4(0, 0, 0, 0);
+		SH_BounceB[i] = XMFLOAT4(0, 0, 0, 0);
 	}
 
 	SkyVisibility[ 0 ] = 0.f;
@@ -318,15 +329,15 @@ Probe::Probe()
 		SkyVisibility[ i ] = 1.f;
 	}
 
-	DynamicLightsRGB = D3DXVECTOR3( 0, 0, 0 );
+	DynamicLightsRGB = XMFLOAT3(0, 0, 0);
 
 	for( int i = 0, e = SH_LocalVPLProbeIndexes.COUNT; i < e; i ++ )
 	{
 		SH_LocalVPLProbeIndexes[ i ].CombinedIdx = -1;
 
-		SH_LocalVPLsR[ i ] = D3DXVECTOR4( 0, 0, 0, 0 );
-		SH_LocalVPLsG[ i ] = D3DXVECTOR4( 0, 0, 0, 0 );
-		SH_LocalVPLsB[ i ] = D3DXVECTOR4( 0, 0, 0, 0 );
+		SH_LocalVPLsR[i] = XMFLOAT4(0, 0, 0, 0);
+		SH_LocalVPLsG[i] = XMFLOAT4(0, 0, 0, 0);
+		SH_LocalVPLsB[i] = XMFLOAT4(0, 0, 0, 0);
 	}
 }
 
@@ -1122,7 +1133,7 @@ ProbeMaster::ProbeMaster()
 {
 	for( int i = 0, e = Probe::NUM_DIRS; i < e; i ++ )
 	{
-		m_SkyDirColors.DirColor[ i ] = D3DXVECTOR4( 0, 0, 0, 0 );
+		m_SkyDirColors.DirColor[i] = XMFLOAT4(0, 0, 0, 0);
 	}
 }
 
@@ -1273,29 +1284,36 @@ void ProbeMaster::InitEditor()
 			{
 				memcpy( &data->coefs, s.coeff, sizeof data->coefs );
 
-				D3DXVECTOR4 d3dProjDir( s.vec.x, s.vec.y, s.vec.z, 1.0f );
-
 				D3DXMATRIX viewProjMatrix = viewMatrices[ d ] * projMatrices[ d ];
 
-				D3DXVec4Transform( &d3dProjDir, &d3dProjDir, &viewProjMatrix );
+				XMVECTOR projDir = DirectX::XMVectorSet(s.vec.x, s.vec.y, s.vec.z, 1.0f);
+				const XMMATRIX viewProj = DirectX::XMLoadFloat4x4(reinterpret_cast<const DirectX::XMFLOAT4X4*>(&viewProjMatrix));
 
-				d3dProjDir*= 1.0f / d3dProjDir.w;
+				projDir = DirectX::XMVector4Transform(projDir, viewProj);
+				const float projW = DirectX::XMVectorGetW(projDir);
+				projDir = DirectX::XMVectorScale(projDir, 1.0f / projW);
 
-				data->texc.x = d3dProjDir.x * 0.5f + 0.5f;
-				data->texc.y = d3dProjDir.y * 0.5f + 0.5f;
+				XMFLOAT4 projDirFloat;
+				StoreFloat4(&projDirFloat, projDir);
 
-				D3DXVECTOR3 d3dVec( s.vec.x, s.vec.y, s.vec.z );
+				data->texc.x = projDirFloat.x * 0.5f + 0.5f;
+				data->texc.y = projDirFloat.y * 0.5f + 0.5f;
+
+				XMVECTOR vec = DirectX::XMVectorSet(s.vec.x, s.vec.y, s.vec.z, 0.0f);
 
 				const r3dPoint3D& viewZDir = Probe::ViewDirs[ d ];
-				D3DXVECTOR3 d3dViewZDir( viewZDir.x, viewZDir.y, viewZDir.z );
+				XMVECTOR viewZ = LoadPoint3(viewZDir);
 
-				float factor = D3DXVec3Dot( &d3dVec, &d3dViewZDir );
+				const float factor = DirectX::XMVectorGetX(DirectX::XMVector3Dot(vec, viewZ));
 
 				// make Z in view space == 1 for easier conversion in accum ps from
 				// depth value and into real world position
-				d3dVec /= factor;
+				vec = DirectX::XMVectorScale(vec, 1.0f / factor);
 
-				data->vec = float3( d3dVec.x, d3dVec.y, d3dVec.z );
+				XMFLOAT3 vecFloat;
+				StoreFloat3(&vecFloat, vec);
+
+				data->vec = float3(vecFloat.x, vecFloat.y, vecFloat.z);
 
 				data ++;
 
@@ -2591,11 +2609,11 @@ void ProbeMaster::UpdateSkyAndSun()
 
 	extern r3dSun* Sun;
 
-	D3DXVECTOR3 vSun ( -Sun->SunDir.x, -Sun->SunDir.z, -Sun->SunDir.y );
+	XMFLOAT3 vSun(-Sun->SunDir.x, -Sun->SunDir.z, -Sun->SunDir.y);
 
 	float SH_R[ 4 ], SH_G[ 4 ], SH_B[ 4 ];
 
-	D3DXSHEvalDirectionalLight( 2, &vSun,	Sun->SunLight.R / 255.f,
+	D3DXSHEvalDirectionalLight(2, reinterpret_cast<const D3DXVECTOR3*>(&vSun), Sun->SunLight.R / 255.f,
 											Sun->SunLight.G / 255.f,
 											Sun->SunLight.B / 255.f,
 											SH_R, SH_G, SH_B );
@@ -2608,11 +2626,11 @@ void ProbeMaster::UpdateSkyAndSun()
 
 	for( int i = 0, e = Probe::NUM_DIRS; i < e; i ++ )
 	{
-		float skyDirectR = D3DXVec4Dot( &m_SkyDomeSH_R, &m_BasisSHArray[ i ] );
-		float skyDirectG = D3DXVec4Dot( &m_SkyDomeSH_G, &m_BasisSHArray[ i ] );
-		float skyDirectB = D3DXVec4Dot( &m_SkyDomeSH_B, &m_BasisSHArray[ i ] );
+		float skyDirectR = DirectX::XMVectorGetX(DirectX::XMVector4Dot(LoadFloat4(m_SkyDomeSH_R), LoadFloat4(m_BasisSHArray[i])));
+		float skyDirectG = DirectX::XMVectorGetX(DirectX::XMVector4Dot(LoadFloat4(m_SkyDomeSH_G), LoadFloat4(m_BasisSHArray[i])));
+		float skyDirectB = DirectX::XMVectorGetX(DirectX::XMVector4Dot(LoadFloat4(m_SkyDomeSH_B), LoadFloat4(m_BasisSHArray[i])));
 
-		m_SkyDirColors.DirColor[ i ] = D3DXVECTOR4( skyDirectR, skyDirectG, skyDirectB, 0.f );
+		m_SkyDirColors.DirColor[i] = XMFLOAT4(skyDirectR, skyDirectG, skyDirectB, 0.f);
 	}
 }
 
@@ -3161,28 +3179,34 @@ const Probe& ProbeMaster::GetDefaultProbe()
 
 static int IsSphereInside( r3dPoint3D centre, float radius, float x0, float y0, float x1, float y1 )
 {
-	D3DXVECTOR4 pos( centre.x, centre.y, centre.z, 1.f );
+	XMFLOAT4 posFloat(centre.x, centre.y, centre.z, 1.f);
+	XMVECTOR pos = LoadFloat4(posFloat);
 
-	D3DXVec4Transform( &pos, &pos, &r3dRenderer->ViewMatrix );
+	const XMMATRIX viewMatrix = DirectX::XMLoadFloat4x4(reinterpret_cast<const DirectX::XMFLOAT4X4*>(&r3dRenderer->ViewMatrix));
+	pos = DirectX::XMVector4Transform(pos, viewMatrix);
+	StoreFloat4(&posFloat, pos);
 
-	if( pos.z + radius < r3dRenderer->NearClip )
+	if (posFloat.z + radius < r3dRenderer->NearClip)
 		return 0;
 
-	if( pos.z < r3dRenderer->NearClip )
-		pos.z = r3dRenderer->NearClip;
+	if (posFloat.z < r3dRenderer->NearClip)
+		posFloat.z = r3dRenderer->NearClip;
 
-	pos.w = 1;
-	D3DXVec4Transform( &pos, &pos, &r3dRenderer->ProjMatrix );
+	posFloat.w = 1;
+	pos = LoadFloat4(posFloat);
+	const XMMATRIX projMatrix = DirectX::XMLoadFloat4x4(reinterpret_cast<const DirectX::XMFLOAT4X4*>(&r3dRenderer->ProjMatrix));
+	pos = DirectX::XMVector4Transform(pos, projMatrix);
+	StoreFloat4(&posFloat, pos);
 
-	pos.x /= pos.w;
-	pos.y /= pos.w;
+	posFloat.x /= posFloat.w;
+	posFloat.y /= posFloat.w;
 
-	radius /= R3D_MAX( pos.w - radius, r3dRenderer->NearClip );
+	radius /= R3D_MAX(posFloat.w - radius, r3dRenderer->NearClip);
 
-	if( pos.x + radius < x0 || pos.x - radius > x1 )
+	if (posFloat.x + radius < x0 || posFloat.x - radius > x1)
 		return 0;
 
-	if( pos.y + radius < y0 || pos.y - radius > y1 )
+	if (posFloat.y + radius < y0 || posFloat.y - radius > y1)
 		return 0;
 
 	return 1;
@@ -3368,9 +3392,9 @@ ProbeIdx ProbeMaster::MoveProbe( ProbeIdx idx, const r3dPoint3D& newPos )
 							invalid.CombinedIdx = -1;
 
 							probe->SH_LocalVPLProbeIndexes[ e - 1 ] = invalid;
-							probe->SH_LocalVPLsR[ e - 1 ] = D3DXVECTOR4( 0, 0, 0, 0 );
-							probe->SH_LocalVPLsG[ e - 1 ] = D3DXVECTOR4( 0, 0, 0, 0 );
-							probe->SH_LocalVPLsB[ e - 1 ] = D3DXVECTOR4( 0, 0, 0, 0 );
+							probe->SH_LocalVPLsR[e - 1] = XMFLOAT4(0, 0, 0, 0);
+							probe->SH_LocalVPLsG[e - 1] = XMFLOAT4(0, 0, 0, 0);
+							probe->SH_LocalVPLsB[e - 1] = XMFLOAT4(0, 0, 0, 0);
 						}
 						else
 						{
@@ -3953,7 +3977,7 @@ void ProbeMaster::RelightProbe( Probe* probe )
 		float skyVisCoef = probe->SkyVisibility[ i ];
 		float skyVis = skyVisCoef * skyDirCoef;
 
-		const D3DXVECTOR4 skyDirColor = m_SkyDirColors.DirColor[ i ];
+		const XMFLOAT4 skyDirColor = m_SkyDirColors.DirColor[i];
 
 		float skyDirectR = skyDirColor.x * skyVis;
 		float skyDirectG = skyDirColor.y * skyVis;
@@ -3961,15 +3985,15 @@ void ProbeMaster::RelightProbe( Probe* probe )
 
 		float finalSkyBounceCoef = skyBounceCoef * skyVisOnBounces;
 
-		float skyBounceR = D3DXVec4Dot( &m_SkyDomeSH_R, &probe->SH_BounceR[ i ] ) * finalSkyBounceCoef;
-		float skyBounceG = D3DXVec4Dot( &m_SkyDomeSH_G, &probe->SH_BounceG[ i ] ) * finalSkyBounceCoef;
-		float skyBounceB = D3DXVec4Dot( &m_SkyDomeSH_B, &probe->SH_BounceB[ i ] ) * finalSkyBounceCoef;
+		float skyBounceR = DirectX::XMVectorGetX(DirectX::XMVector4Dot(LoadFloat4(m_SkyDomeSH_R), LoadFloat4(probe->SH_BounceR[i]))) * finalSkyBounceCoef;
+		float skyBounceG = DirectX::XMVectorGetX(DirectX::XMVector4Dot(LoadFloat4(m_SkyDomeSH_G), LoadFloat4(probe->SH_BounceG[i]))) * finalSkyBounceCoef;
+		float skyBounceB = DirectX::XMVectorGetX(DirectX::XMVector4Dot(LoadFloat4(m_SkyDomeSH_B), LoadFloat4(probe->SH_BounceB[i]))) * finalSkyBounceCoef;
 
 		float finalSunBounceCoef = sunBounceCoef * skyVisOnBounces;
 
-		float sunBounceR = D3DXVec4Dot( &m_SunSH_R, &probe->SH_BounceR[ i ] ) * finalSunBounceCoef;
-		float sunBounceG = D3DXVec4Dot( &m_SunSH_G, &probe->SH_BounceG[ i ] ) * finalSunBounceCoef;
-		float sunBounceB = D3DXVec4Dot( &m_SunSH_B, &probe->SH_BounceB[ i ] ) * finalSunBounceCoef;
+		float sunBounceR = DirectX::XMVectorGetX(DirectX::XMVector4Dot(LoadFloat4(m_SunSH_R), LoadFloat4(probe->SH_BounceR[i]))) * finalSunBounceCoef;
+		float sunBounceG = DirectX::XMVectorGetX(DirectX::XMVector4Dot(LoadFloat4(m_SunSH_G), LoadFloat4(probe->SH_BounceG[i]))) * finalSunBounceCoef;
+		float sunBounceB = DirectX::XMVectorGetX(DirectX::XMVector4Dot(LoadFloat4(m_SunSH_B), LoadFloat4(probe->SH_BounceB[i]))) * finalSunBounceCoef;
 
 		float finalR = skyDirectR + skyBounceR + sunBounceR;
 		float finalG = skyDirectG + skyBounceG + sunBounceG;
@@ -4052,9 +4076,9 @@ void ProbeMaster::RelightDynamicProbe( Probe* probe )
 
 			Probe* srcProbe = GetProbe( srcProbeIdx );
 
-			dynaR += D3DXVec4Dot( &m_BasisSHArray[ i ], &probe->SH_LocalVPLsR[ l ] ) * srcProbe->DynamicLightsRGB.x;
-			dynaG += D3DXVec4Dot( &m_BasisSHArray[ i ], &probe->SH_LocalVPLsG[ l ] ) * srcProbe->DynamicLightsRGB.y;
-			dynaB += D3DXVec4Dot( &m_BasisSHArray[ i ], &probe->SH_LocalVPLsB[ l ] ) * srcProbe->DynamicLightsRGB.z;
+			dynaR += DirectX::XMVectorGetX(DirectX::XMVector4Dot(LoadFloat4(m_BasisSHArray[i]), LoadFloat4(probe->SH_LocalVPLsR[l]))) * srcProbe->DynamicLightsRGB.x;
+			dynaG += DirectX::XMVectorGetX(DirectX::XMVector4Dot(LoadFloat4(m_BasisSHArray[i]), LoadFloat4(probe->SH_LocalVPLsG[l]))) * srcProbe->DynamicLightsRGB.y;
+			dynaB += DirectX::XMVectorGetX(DirectX::XMVector4Dot(LoadFloat4(m_BasisSHArray[i]), LoadFloat4(probe->SH_LocalVPLsB[l]))) * srcProbe->DynamicLightsRGB.z;
 		}
 
 		float dyna_coef = r_lp_dyna_coef->GetFloat();
@@ -4181,7 +4205,7 @@ void ProbeMaster::StartUpdatingBounce()
 
 //------------------------------------------------------------------------
 
-static void ReadBounceTextureSH( D3DXVECTOR4* targ, IDirect3DSurface9* srcSurf )
+static void ReadBounceTextureSH(XMFLOAT4* targ, IDirect3DSurface9* srcSurf)
 {
 	D3DLOCKED_RECT lrect;
 	D3D_V( srcSurf->LockRect( &lrect, NULL, D3DLOCK_READONLY ) );
@@ -4198,7 +4222,7 @@ static void ReadBounceTextureSH( D3DXVECTOR4* targ, IDirect3DSurface9* srcSurf )
 	D3D_V( srcSurf->UnlockRect() );
 }
 
-static void ReadPVLTextureSH( D3DXVECTOR4* targ, IDirect3DSurface9* srcSurf )
+static void ReadPVLTextureSH(XMFLOAT4* targ, IDirect3DSurface9* srcSurf)
 {
 	D3DLOCKED_RECT lrect;
 	D3D_V( srcSurf->LockRect( &lrect, NULL, D3DLOCK_READONLY ) );
@@ -4279,8 +4303,8 @@ void ProbeMaster::UpdateProbeBounce( Probe* probe )
 
 			D3DXMATRIX invViewNoTProj = r3dRenderer->InvProjMatrix * invViewNoT;
 
-			D3DXVECTOR4 CamVec = D3DXVECTOR4(gCam.x, gCam.y, gCam.z, 1);
-			r3dRenderer->pd3ddev->SetPixelShaderConstantF(MC_CAMVEC, (float*)&CamVec, 1);
+			XMFLOAT4 camVec(gCam.x, gCam.y, gCam.z, 1.f);
+			r3dRenderer->pd3ddev->SetPixelShaderConstantF(MC_CAMVEC, reinterpret_cast<float*>(&camVec), 1);
 
 			float defSSAO[ 4 ] = { r_ssao_clear_val->GetFloat(), 0.f, 0.f, 0.f };
 			r3dRenderer->pd3ddev->SetPixelShaderConstantF(MC_DEF_SSAO, defSSAO, 1);
@@ -4330,26 +4354,29 @@ void ProbeMaster::UpdateProbeBounce( Probe* probe )
 			r3dSetFiltering( R3D_POINT, 2 );
 
 			
-			D3DXVECTOR3 viewU = D3DXVECTOR3( r3dRenderer->ViewMatrix._11, r3dRenderer->ViewMatrix._21, r3dRenderer->ViewMatrix._31 );
-			D3DXVECTOR3 viewV = D3DXVECTOR3( r3dRenderer->ViewMatrix._12, r3dRenderer->ViewMatrix._22, r3dRenderer->ViewMatrix._32 );
+			XMFLOAT3 viewU(r3dRenderer->ViewMatrix._11, r3dRenderer->ViewMatrix._21, r3dRenderer->ViewMatrix._31);
+			XMFLOAT3 viewV(r3dRenderer->ViewMatrix._12, r3dRenderer->ViewMatrix._22, r3dRenderer->ViewMatrix._32);
 
 			float n = gCam.NearClip;
 
-			D3DXVECTOR4 vec00( -n, -n, 0, n );
-			D3DXVec4Transform( &vec00, &vec00, &invViewNoTProj );
-			D3DXVECTOR4 vec10( +n, -n, 0, n );
-			D3DXVec4Transform( &vec10, &vec10, &invViewNoTProj );
-			D3DXVECTOR4 vec01( -n, +n, 0, n );
-			D3DXVec4Transform( &vec01, &vec01, &invViewNoTProj );
+			const XMMATRIX invViewNoTProjMatrix = DirectX::XMLoadFloat4x4(reinterpret_cast<const DirectX::XMFLOAT4X4*>(&invViewNoTProj));
 
-			D3DXVECTOR4 udiff = vec10 - vec00;
-			D3DXVECTOR4 vdiff = vec01 - vec00;
+			XMFLOAT4 vec00(-n, -n, 0.f, n);
+			XMFLOAT4 vec10(+n, -n, 0.f, n);
+			XMFLOAT4 vec01(-n, +n, 0.f, n);
+
+			XMVECTOR vec00Vec = DirectX::XMVector4Transform(LoadFloat4(vec00), invViewNoTProjMatrix);
+			XMVECTOR vec10Vec = DirectX::XMVector4Transform(LoadFloat4(vec10), invViewNoTProjMatrix);
+			XMVECTOR vec01Vec = DirectX::XMVector4Transform(LoadFloat4(vec01), invViewNoTProjMatrix);
+
+			XMVECTOR udiff = DirectX::XMVectorSubtract(vec10Vec, vec00Vec);
+			XMVECTOR vdiff = DirectX::XMVectorSubtract(vec01Vec, vec00Vec);
 			// because .w is zeroed after substraction
-			float ulen = D3DXVec4Length( &udiff );
-			float vlen = D3DXVec4Length( &vdiff );
+			float ulen = DirectX::XMVectorGetX(DirectX::XMVector4Length(udiff));
+			float vlen = DirectX::XMVectorGetX(DirectX::XMVector4Length(vdiff));
 
-			viewU *= ulen / BOUNCE_RT_DIM;
-			viewV *= vlen / BOUNCE_RT_DIM;
+			StoreFloat3(&viewU, DirectX::XMVectorScale(LoadFloat3(viewU), ulen / BOUNCE_RT_DIM));
+			StoreFloat3(&viewV, DirectX::XMVectorScale(LoadFloat3(viewV), vlen / BOUNCE_RT_DIM));
 
 			float psConsts[ 4 ][ 4 ] =  {	
 											// float4 texStep        : register( c0 );
@@ -4378,9 +4405,9 @@ void ProbeMaster::UpdateProbeBounce( Probe* probe )
 					float u = x * sc;
 					float v = 1.0f - y * sc;
 
-					D3DXVECTOR4 ppVec( n* ( u * 2 - 1 ), - n * ( v * 2 - 1 ), 0, n );
-
-					D3DXVec4Transform( &ppVec, &ppVec, &invViewNoTProj );
+					XMFLOAT4 ppVec(n * (u * 2 - 1), -n * (v * 2 - 1), 0.f, n);
+					XMVECTOR ppVecTransformed = DirectX::XMVector4Transform(LoadFloat4(ppVec), invViewNoTProjMatrix);
+					StoreFloat4(&ppVec, ppVecTransformed);
 
 					float psConsts[ 2 ][ 4 ] = {
 						// float4 texCoord       : register( c4 );
@@ -4542,9 +4569,9 @@ void ProbeMaster::UpdateLocalVPLBounce( Probe* probe )
 
 	for( int i = 0, e = Probe::NUM_LOCAL_VPL; i < e; i ++ )
 	{
-		probe->SH_LocalVPLsR[ i ] = D3DXVECTOR4( 0, 0, 0, 0 );
-		probe->SH_LocalVPLsG[ i ] = D3DXVECTOR4( 0, 0, 0, 0 );
-		probe->SH_LocalVPLsB[ i ] = D3DXVECTOR4( 0, 0, 0, 0 );
+		probe->SH_LocalVPLsR[i] = XMFLOAT4(0, 0, 0, 0);
+		probe->SH_LocalVPLsG[i] = XMFLOAT4(0, 0, 0, 0);
+		probe->SH_LocalVPLsB[i] = XMFLOAT4(0, 0, 0, 0);
 	}
 
 	for( int d = 0, e = Probe::NUM_DIRS; d < e; d ++ )
@@ -4584,8 +4611,8 @@ void ProbeMaster::UpdateLocalVPLBounce( Probe* probe )
 
 			r3dRenderer->SetCamera( gCam, false );
 
-			D3DXVECTOR4 CamVec = D3DXVECTOR4(gCam.x, gCam.y, gCam.z, 1);
-			r3dRenderer->pd3ddev->SetPixelShaderConstantF(MC_CAMVEC, (float*)&CamVec, 1);
+			XMFLOAT4 camVec(gCam.x, gCam.y, gCam.z, 1.f);
+			r3dRenderer->pd3ddev->SetPixelShaderConstantF(MC_CAMVEC, reinterpret_cast<float*>(&camVec), 1);
 
 			float defSSAO[ 4 ] = { r_ssao_clear_val->GetFloat(), 0.f, 0.f, 0.f };
 			r3dRenderer->pd3ddev->SetPixelShaderConstantF(MC_DEF_SSAO, defSSAO, 1);
@@ -4686,15 +4713,17 @@ void ProbeMaster::UpdateLocalVPLBounce( Probe* probe )
 					D3D_V( r3dRenderer->pd3ddev->GetRenderTargetData( m_BounceAccumSHGRT->GetTex2DSurface(), greenSurf  ) );
 					D3D_V( r3dRenderer->pd3ddev->GetRenderTargetData( m_BounceAccumSHBRT->GetTex2DSurface(), blueSurf  ) );
 
-					D3DXVECTOR4 localVPL_R, localVPL_G, localVPL_B;
+					XMFLOAT4 localVPL_R;
+					XMFLOAT4 localVPL_G;
+					XMFLOAT4 localVPL_B;
 
 					ReadPVLTextureSH( &localVPL_R, redSurf );
 					ReadPVLTextureSH( &localVPL_G, greenSurf );
 					ReadPVLTextureSH( &localVPL_B, blueSurf );
 
-					probe->SH_LocalVPLsR[ i ] += localVPL_R;
-					probe->SH_LocalVPLsG[ i ] += localVPL_G;
-					probe->SH_LocalVPLsB[ i ] += localVPL_B;
+					StoreFloat4(&probe->SH_LocalVPLsR[i], DirectX::XMVectorAdd(LoadFloat4(probe->SH_LocalVPLsR[i]), LoadFloat4(localVPL_R)));
+					StoreFloat4(&probe->SH_LocalVPLsG[i], DirectX::XMVectorAdd(LoadFloat4(probe->SH_LocalVPLsG[i]), LoadFloat4(localVPL_G)));
+					StoreFloat4(&probe->SH_LocalVPLsB[i], DirectX::XMVectorAdd(LoadFloat4(probe->SH_LocalVPLsB[i]), LoadFloat4(localVPL_B)));
 
 					probe->SH_LocalVPLProbeIndexes[ i ] = pidx;
 
@@ -4931,7 +4960,9 @@ void ProbeMaster::VisualizeProbe( const Probe* probe )
 
 	float psConsts[ 11 ][ 4 ];
 
-	D3DXVECTOR4 src0, src1, src2;
+	XMFLOAT4 src0;
+	XMFLOAT4 src1;
+	XMFLOAT4 src2;
 
 	switch( m_VisMode )
 	{
@@ -5233,9 +5264,9 @@ void ProbeMaster::RasterizeProbeIntoVolume( Probe* probe, const D3DBOX& box, int
 
 static float SampleHemisphereLighting( float th, float ph )
 {
-	D3DXVECTOR3 vec( cos( ph ) * sin( th ), cos( th ), sin( ph ) * sin( th ) );
+	XMFLOAT3 vec(cos(ph) * sin(th), cos(th), sin(ph) * sin(th));
 
-	return R3D_MAX( D3DXVec3Dot( &vec, &g_HemisphereNormal ), 0.f );
+	return R3D_MAX(DirectX::XMVectorGetX(DirectX::XMVector3Dot(LoadFloat3(vec), LoadFloat3(g_HemisphereNormal))), 0.f);
 }
 
 static const char* SH_TEXTURE_PATH = "Data/Tests/normal_to_sh.dds";
@@ -5308,7 +5339,7 @@ void ProbeMaster::FillNormalToSHTex()
 					break;
 				}
 
-				D3DXVec3Normalize( &g_HemisphereNormal, &g_HemisphereNormal );
+				StoreFloat3(&g_HemisphereNormal, DirectX::XMVector3Normalize(LoadFloat3(g_HemisphereNormal)));
 
 				float* ptr = (float*)( (char*)lrect.pBits + ( NORMAL_TO_SH_DIM - 1 - y ) * lrect.Pitch ) + x * 4;
 
@@ -5862,11 +5893,15 @@ void ProbeMaster::SetupDefaultLightProbe()
 	float GCoef_Up = m_Settings.DefaultBounceColor_Up.G / 255.f;
 	float BCoef_Up = m_Settings.DefaultBounceColor_Up.B / 255.f;
 
+	float* shBounceRUp = reinterpret_cast<float*>(&m_DefaultProbe.SH_BounceR[0]);
+	float* shBounceGUp = reinterpret_cast<float*>(&m_DefaultProbe.SH_BounceG[0]);
+	float* shBounceBUp = reinterpret_cast<float*>(&m_DefaultProbe.SH_BounceB[0]);
+
 	for( int j = 0, e = 4 ; j < e ; j ++ )
 	{
-		m_DefaultProbe.SH_BounceR[ 0 ][ j ] = DefaultSHBasis[ 0 ][ j ] * RCoef_Up;
-		m_DefaultProbe.SH_BounceG[ 0 ][ j ] = DefaultSHBasis[ 0 ][ j ] * GCoef_Up;
-		m_DefaultProbe.SH_BounceB[ 0 ][ j ] = DefaultSHBasis[ 0 ][ j ] * BCoef_Up;
+		shBounceRUp[j] = DefaultSHBasis[0][j] * RCoef_Up;
+		shBounceGUp[j] = DefaultSHBasis[0][j] * GCoef_Up;
+		shBounceBUp[j] = DefaultSHBasis[0][j] * BCoef_Up;
 	}
 
 	float RCoef_Down = m_Settings.DefaultBounceColor_Down.R / 255.f;
@@ -5875,11 +5910,15 @@ void ProbeMaster::SetupDefaultLightProbe()
 
 	for( int i = 1, e = Probe::NUM_DIRS ; i < e ; i ++ )
 	{
+		float* shBounceR = reinterpret_cast<float*>(&m_DefaultProbe.SH_BounceR[i]);
+		float* shBounceG = reinterpret_cast<float*>(&m_DefaultProbe.SH_BounceG[i]);
+		float* shBounceB = reinterpret_cast<float*>(&m_DefaultProbe.SH_BounceB[i]);
+
 		for( int j = 0, e = 4 ; j < e ; j ++ )
 		{
-			m_DefaultProbe.SH_BounceR[ i ][ j ] = DefaultSHBasis[ i ][ j ] * RCoef_Down;
-			m_DefaultProbe.SH_BounceG[ i ][ j ] = DefaultSHBasis[ i ][ j ] * GCoef_Down;
-			m_DefaultProbe.SH_BounceB[ i ][ j ] = DefaultSHBasis[ i ][ j ] * BCoef_Down;
+			shBounceR[j] = DefaultSHBasis[i][j] * RCoef_Down;
+			shBounceG[j] = DefaultSHBasis[i][j] * GCoef_Down;
+			shBounceB[j] = DefaultSHBasis[i][j] * BCoef_Down;
 		}
 	}
 }
@@ -6096,11 +6135,10 @@ void SH_setup_spherical_samples()
 
 			for( int d = 0, e = Probe::NUM_DIRS; d < e; d ++ )
 			{
-				D3DXVECTOR3 faceViewDir = Probe::ViewDirs[ d ];
+				XMVECTOR faceViewDir = LoadPoint3(Probe::ViewDirs[d]);
+				XMVECTOR sampleVec = DirectX::XMVectorSet(vec.x, vec.y, vec.z, 0.f);
 
-				D3DXVECTOR3 d3dvec( vec.x, vec.y, vec.z );
-
-				float dot = D3DXVec3Dot( &d3dvec, &faceViewDir );
+				float dot = DirectX::XMVectorGetX(DirectX::XMVector3Dot(sampleVec, faceViewDir));
 
 				if( dot >= maxDot )
 				{
@@ -6127,18 +6165,25 @@ void SH_setup_spherical_samples()
 		const r3dPoint3D& srcUp = Probe::UpVecs[ i ];
 		const r3dPoint3D& srcDir = Probe::ViewDirs[ i ];
 
-		D3DXVECTOR3 up ( srcUp.x, srcUp.y, srcUp.z );
-		D3DXVECTOR3 view( srcDir.x, srcDir.y, srcDir.z );
-		D3DXVECTOR3 side;
+		XMVECTOR up = DirectX::XMVectorSet(srcUp.x, srcUp.y, srcUp.z, 0.f);
+		XMVECTOR view = DirectX::XMVectorSet(srcDir.x, srcDir.y, srcDir.z, 0.f);
+		XMVECTOR side = DirectX::XMVector3Cross(view, up);
 
-		D3DXVec3Cross( &side, &view, &up );
+		XMFLOAT3 upFloat;
+		XMFLOAT3 viewFloat;
+		XMFLOAT3 sideFloat;
+		StoreFloat3(&upFloat, up);
+		StoreFloat3(&viewFloat, view);
+		StoreFloat3(&sideFloat, side);
 
 		D3DXMATRIX dir_xfm;
 
-		dir_xfm._11 = side.x;	dir_xfm._12 = side.y;	dir_xfm._13 = side.z;	dir_xfm._14 = 0.f;
-		dir_xfm._21 = view.x;	dir_xfm._22 = view.y;	dir_xfm._23 = view.z;	dir_xfm._24 = 0.f;
-		dir_xfm._31 = up.x;		dir_xfm._32 = up.y;		dir_xfm._33 = up.z;		dir_xfm._34 = 0.f;
+		dir_xfm._11 = sideFloat.x;	dir_xfm._12 = sideFloat.y;	dir_xfm._13 = sideFloat.z;	dir_xfm._14 = 0.f;
+		dir_xfm._21 = viewFloat.x;	dir_xfm._22 = viewFloat.y;	dir_xfm._23 = viewFloat.z;	dir_xfm._24 = 0.f;
+		dir_xfm._31 = upFloat.x;		dir_xfm._32 = upFloat.y;		dir_xfm._33 = upFloat.z;		dir_xfm._34 = 0.f;
 		dir_xfm._41 = 0.f;		dir_xfm._42 = 0.f;		dir_xfm._43 = 0.f;		dir_xfm._44 = 1.0f;
+
+		const XMMATRIX dirXfmMatrix = DirectX::XMLoadFloat4x4(reinterpret_cast<const DirectX::XMFLOAT4X4*>(&dir_xfm));
 
 		Float2Arr& targArr = g_DirIntegrateSamples[ i ];
 		targArr.Resize( N_SAMPLES );
@@ -6150,22 +6195,23 @@ void SH_setup_spherical_samples()
 
 			float sin_theta = sinf( theta );
 
-			D3DXVECTOR3 dir( cosf( phi ) * sin_theta, cosf( theta ), sin( phi ) * sin_theta );
+			XMFLOAT3 dirFloat(cosf(phi) * sin_theta, cosf(theta), sin(phi) * sin_theta);
+			XMVECTOR dir = DirectX::XMVector3TransformNormal(LoadFloat3(dirFloat), dirXfmMatrix);
+			StoreFloat3(&dirFloat, dir);
 
-			D3DXVec3TransformNormal( &dir, &dir, &dir_xfm );
-
-			D3DXVECTOR3 checkmevec( 0, 1, 0 );
-
-			D3DXVec3TransformNormal( &checkmevec, &checkmevec, &dir_xfm );
+			XMFLOAT3 checkmevecFloat(0.f, 1.f, 0.f);
+			XMVECTOR checkmevec = DirectX::XMVector3TransformNormal(LoadFloat3(checkmevecFloat), dirXfmMatrix);
+			StoreFloat3(&checkmevecFloat, checkmevec);
+			(void)checkmevecFloat;
 
 			// now retrieve 'world space' theta and phy
 
-			theta = acos( dir.y );
+			theta = acos(dirFloat.y);
 
-			sin_theta	= sqrtf( 1.0f - dir.y * dir.y );
-			phi			= fabs( sin_theta ) > 0.0001 ? acos( R3D_MAX( R3D_MIN( dir.x / sin_theta, 1.f ), -1.0f ) ) : 0;
+			sin_theta = sqrtf(1.0f - dirFloat.y * dirFloat.y);
+			phi = fabs(sin_theta) > 0.0001 ? acos(R3D_MAX(R3D_MIN(dirFloat.x / sin_theta, 1.f), -1.0f)) : 0;
 
-			if( dir.z < 0 )
+			if (dirFloat.z < 0)
 			{
 				phi = float( 2 * M_PI ) - phi;
 			}
@@ -6174,9 +6220,9 @@ void SH_setup_spherical_samples()
 			targArr[ i ].y = phi;
 
 #ifdef _DEBUG
-			D3DXVECTOR3 check_me( cosf( phi ) * sinf( theta ), cosf( theta ), sinf( phi ) * sinf( theta )  );
+			XMFLOAT3 checkMeFloat(cosf(phi)* sinf(theta), cosf(theta), sinf(phi)* sinf(theta));
 
-			float check_val = D3DXVec3Dot( &check_me, &view );
+			float check_val = DirectX::XMVectorGetX(DirectX::XMVector3Dot(LoadFloat3(checkMeFloat), view));
 			float check_against = cosf( Probe::DIR_FOV );
 
 			r3d_assert( check_val >= check_against - 0.001f );
