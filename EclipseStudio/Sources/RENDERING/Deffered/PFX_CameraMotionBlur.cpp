@@ -6,7 +6,7 @@
 #include "PostFXChief.h"
 #include "PFX_CameraMotionBlur.h"
 
-void CalculateMotionMatrix( D3DXMATRIX& output, D3DXMATRIX& lastViewProj );
+void CalculateMotionMatrix(DirectX::XMFLOAT4X4& output, DirectX::XMFLOAT4X4& lastViewProj);
 
 //------------------------------------------------------------------------
 
@@ -16,8 +16,8 @@ PFX_CameraMotionBlur::PFX_CameraMotionBlur()
 	mSettings.MotionScale		= 2.5f;
 	mSettings.MotionThreshold	= 0.005f;
 
-	D3DXMatrixIdentity( &mMotionMatrix );
-	D3DXMatrixIdentity( &mLastViewProj );
+	DirectX::XMStoreFloat4x4(&mMotionMatrix, DirectX::XMMatrixIdentity());
+	DirectX::XMStoreFloat4x4(&mLastViewProj, DirectX::XMMatrixIdentity());
 }
 
 //------------------------------------------------------------------------

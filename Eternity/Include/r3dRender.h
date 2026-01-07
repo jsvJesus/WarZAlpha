@@ -7,6 +7,8 @@
 #include "pShader.h"
 #include "VShader.h"
 
+#include <DirectXMath.h>
+
 #if defined(R3D_USE_DX11)
 #include "../Eternity/Source/r3dRenderDX11.h"
 #endif
@@ -87,6 +89,11 @@ const D3DFORMAT RESZ_FORMAT = static_cast<D3DFORMAT>(MAKEFOURCC('R', 'E', 'S', '
 const D3DFORMAT DF24_FORMAT = static_cast<D3DFORMAT>(MAKEFOURCC('D', 'F', '2', '4'));
 
 typedef r3dTL::TArray<D3DDISPLAYMODE> ModesArray;
+
+typedef DirectX::XMFLOAT4X4 r3dRenderMatrix;
+typedef DirectX::XMFLOAT4 r3dRenderVector;
+static_assert(sizeof(r3dRenderMatrix) == sizeof(D3DXMATRIX), "r3dRenderMatrix must match D3DXMATRIX layout.");
+static_assert(sizeof(r3dRenderVector) == sizeof(D3DXVECTOR4), "r3dRenderVector must match D3DXVECTOR4 layout.");
 
 extern DWORD gMainThreadID ;
 
@@ -688,6 +695,11 @@ public:
 	void		BuildMatrixPerspectiveOffCenterLH( D3DXMATRIX *pOut, FLOAT l, FLOAT r, FLOAT b, FLOAT t, FLOAT zn, FLOAT zf );
 	void		BuildMatrixOrthoLH( D3DXMATRIX *pOut, FLOAT w, FLOAT h, FLOAT zn, FLOAT zf );
 	void		BuildMatrixOrthoOffCenterLH( D3DXMATRIX *pOut, FLOAT l, FLOAT r, FLOAT b, FLOAT t, FLOAT zn, FLOAT zf );
+
+	void		StoreShaderMatrix(r3dRenderMatrix* out, const D3DXMATRIX& in) const;
+	void		StoreShaderMatrix(r3dRenderMatrix* out, DirectX::CXMMATRIX matrix) const;
+	void		StoreShaderMatrixTranspose(r3dRenderMatrix* out, const D3DXMATRIX& in) const;
+	void		StoreShaderMatrixTranspose(r3dRenderMatrix* out, DirectX::CXMMATRIX matrix) const;
 
 	void		ResetShaders(int bResetSystemShaders = 0);
 	int			AddPixelShaderFromFile(const char* shaderName, const char* fileName, int bSystem = 0);

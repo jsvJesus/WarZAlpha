@@ -5,6 +5,7 @@
 #include "r3dConePrim.h"
 
 #include "../GameEngine/TrueNature2/Terrain2.h"
+#include <DirectXMath.h>
 
 #include "GameCommon.h"
 #include "GameLevel.h"
@@ -380,85 +381,56 @@ void SetSSSParams(int reg, bool dirlight, const r3dSSScatterParams& SSSParams )
 	}
 }
 
-void CalculateMotionMatrix( D3DXMATRIX& output, D3DXMATRIX& lastViewProj )
+void CalculateMotionMatrix(DirectX::XMFLOAT4X4& output, DirectX::XMFLOAT4X4& lastViewProj)
 {
 	// Maps [-1,+1,0]..[+1,-1,+1] onto [0,0,0]..[1,1,1]
-	const D3DXMATRIX projectionToScreen = 
-		D3DXMATRIX(	0.5f,  0.0f, 0.0f, 0.0f,
-		0.0f, -0.5f, 0.0f, 0.0f,
-		0.0f,  0.0f, 1.0f, 0.0f,
-		0.5f,  0.5f, 0.0f, 1.0f );
+	const DirectX::XMMATRIX projectionToScreen =
+		DirectX::XMMATRIX(0.5f, 0.0f, 0.0f, 0.0f,
+			0.0f, -0.5f, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, 0.0f,
+			0.5f, 0.5f, 0.0f, 1.0f);
 
 	// Inverse of above
-	const D3DXMATRIX screenToProjection = 
-		D3DXMATRIX( 2.0f,  0.0f, 0.0f, 0.0f,
-		0.0f, -2.0f, 0.0f, 0.0f,
-		0.0f,  0.0f, 1.0f, 0.0f,
-		-1.0f,  1.0f, 0.0f, 1.0f );
+	const DirectX::XMMATRIX screenToProjection =
+		DirectX::XMMATRIX(2.0f, 0.0f, 0.0f, 0.0f,
+			0.0f, -2.0f, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, 0.0f,
+			-1.0f, 1.0f, 0.0f, 1.0f);
 
-	D3DXMATRIX ViewProj;
-	D3DXMATRIX View = r3dRenderer->ViewMatrix;
-	View._41 = 0; View._42 = 0; View._43 = 0; // disable motion blur for moving, we have blur only for camera rotation
-	D3DXMatrixMultiply( &ViewProj, &View, &r3dRenderer->ProjMatrix);
+	DirectX::XMFLOAT4X4 viewFloat = *reinterpret_cast<const DirectX::XMFLOAT4X4*>(&r3dRenderer->ViewMatrix);
+	viewFloat._41 = 0.0f;
+	viewFloat._42 = 0.0f;
+	viewFloat._43 = 0.0f; // disable motion blur for moving, we have blur only for camera rotation
 
-	D3DXMATRIX projToWorld_Curr;
-	D3DXMatrixInverse( &projToWorld_Curr, NULL, &ViewProj );
+	const DirectX::XMMATRIX view = DirectX::XMLoadFloat4x4(&viewFloat);
+	const DirectX::XMMATRIX proj = DirectX::XMLoadFloat4x4(reinterpret_cast<const DirectX::XMFLOAT4X4*>(&r3dRenderer->ProjMatrix));
+	const DirectX::XMMATRIX viewProj = DirectX::XMMatrixMultiply(view, proj);
 
-	D3DXMATRIX screenToWorld_Curr;
-	D3DXMatrixMultiply( &screenToWorld_Curr, &screenToProjection, &projToWorld_Curr);
+	const DirectX::XMMATRIX projToWorld_Curr = DirectX::XMMatrixInverse(nullptr, viewProj);
 
-	D3DXMATRIX worldToScreen_Prev;
-	D3DXMatrixMultiply( &worldToScreen_Prev, &lastViewProj, &projectionToScreen);
+	const DirectX::XMMATRIX screenToWorld_Curr = DirectX::XMMatrixMultiply(screenToProjection, projToWorld_Curr);
 
-	D3DXMATRIX screenCurrentToPrevious;
-	D3DXMatrixMultiply( &screenCurrentToPrevious, &screenToWorld_Curr, &worldToScreen_Prev);
+	const DirectX::XMMATRIX lastViewProjMatrix = DirectX::XMLoadFloat4x4(&lastViewProj);
+	const DirectX::XMMATRIX worldToScreen_Prev = DirectX::XMMatrixMultiply(lastViewProjMatrix, projectionToScreen);
 
-	D3DXMATRIX Identity; D3DXMatrixIdentity(&Identity);
-	D3DXMATRIX screenToVelocity = 
-		D3DXMATRIX(	screenCurrentToPrevious(0,0) - Identity(0,0),
-		screenCurrentToPrevious(0,1) - Identity(0,1),
-		screenCurrentToPrevious(0,2) - Identity(0,2),
-		screenCurrentToPrevious(0,3) - Identity(0,3),
-		screenCurrentToPrevious(1,0) - Identity(1,0),
-		screenCurrentToPrevious(1,1) - Identity(1,1),
-		screenCurrentToPrevious(1,2) - Identity(1,2),
-		screenCurrentToPrevious(1,3) - Identity(1,3),
-		screenCurrentToPrevious(2,0) - Identity(2,0),
-		screenCurrentToPrevious(2,1) - Identity(2,1),
-		screenCurrentToPrevious(2,2) - Identity(2,2),
-		screenCurrentToPrevious(2,3) - Identity(2,3),
-		screenCurrentToPrevious(3,0) - Identity(3,0),
-		screenCurrentToPrevious(3,1) - Identity(3,1),
-		screenCurrentToPrevious(3,2) - Identity(3,2),
-		screenCurrentToPrevious(3,3) - Identity(3,3));
+	const DirectX::XMMATRIX screenCurrentToPrevious = DirectX::XMMatrixMultiply(screenToWorld_Curr, worldToScreen_Prev);
 
-	float w = screenToVelocity(3,3);
-	D3DXMATRIX wMatrix = 
-		D3DXMATRIX( w,    0.0f, 0.0f, 0.0f,
-		0.0f, w,    0.0f, 0.0f,
-		0.0f, 0.0f, w,    0.0f,
-		0.0f, 0.0f, 0.0f, w );
+	const DirectX::XMMATRIX identity = DirectX::XMMatrixIdentity();
+	const DirectX::XMMATRIX screenToVelocity = screenCurrentToPrevious - identity;
 
-	D3DXMATRIX screenToVelocityRefined = 
-		D3DXMATRIX(	screenToVelocity(0,0) - wMatrix(0,0),
-		screenToVelocity(0,1) - wMatrix(0,1),
-		screenToVelocity(0,2) - wMatrix(0,2),
-		screenToVelocity(0,3) - wMatrix(0,3),
-		screenToVelocity(1,0) - wMatrix(1,0),
-		screenToVelocity(1,1) - wMatrix(1,1),
-		screenToVelocity(1,2) - wMatrix(1,2),
-		screenToVelocity(1,3) - wMatrix(1,3),
-		screenToVelocity(2,0) - wMatrix(2,0),
-		screenToVelocity(2,1) - wMatrix(2,1),
-		screenToVelocity(2,2) - wMatrix(2,2),
-		screenToVelocity(2,3) - wMatrix(2,3),
-		screenToVelocity(3,0) - wMatrix(3,0),
-		screenToVelocity(3,1) - wMatrix(3,1),
-		screenToVelocity(3,2) - wMatrix(3,2),
-		screenToVelocity(3,3) - wMatrix(3,3) );
+	DirectX::XMFLOAT4X4 screenToVelocityFloat;
+	DirectX::XMStoreFloat4x4(&screenToVelocityFloat, screenToVelocity);
+	float w = screenToVelocityFloat._44;
+	const DirectX::XMMATRIX wMatrix =
+		DirectX::XMMATRIX(w, 0.0f, 0.0f, 0.0f,
+			0.0f, w, 0.0f, 0.0f,
+			0.0f, 0.0f, w, 0.0f,
+			0.0f, 0.0f, 0.0f, w);
 
-	lastViewProj = ViewProj;
-	D3DXMatrixTranspose(&output, &screenToVelocityRefined);
+	const DirectX::XMMATRIX screenToVelocityRefined = screenToVelocity - wMatrix;
+
+	DirectX::XMStoreFloat4x4(&lastViewProj, viewProj);
+	DirectX::XMStoreFloat4x4(&output, DirectX::XMMatrixTranspose(screenToVelocityRefined));
 }
 
 // Computes corner points of a frustum

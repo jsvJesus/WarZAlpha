@@ -1,6 +1,7 @@
 #pragma once
 
 #include "PostFX.h"
+#include <DirectXMath.h>
 
 class PFX_CameraMotionBlur : public PostFX
 {
@@ -38,6 +39,6 @@ private:
 private:
 	Settings	mSettings;
 
-	D3DXMATRIX	mMotionMatrix;
-	D3DXMATRIX	mLastViewProj;
+	DirectX::XMFLOAT4X4	mMotionMatrix;
+	DirectX::XMFLOAT4X4	mLastViewProj;
 };

@@ -2708,6 +2708,26 @@ void r3dRenderLayer::BuildMatrixOrthoOffCenterLH( D3DXMATRIX *pOut, FLOAT l, FLO
 	D3DXMatrixOrthoOffCenterLH( pOut, l, r, b, t, zn, zf );
 }
 
+void r3dRenderLayer::StoreShaderMatrix(r3dRenderMatrix* out, const D3DXMATRIX& in) const
+{
+	DirectX::XMStoreFloat4x4(out, DirectX::XMLoadFloat4x4(reinterpret_cast<const DirectX::XMFLOAT4X4*>(&in)));
+}
+
+void r3dRenderLayer::StoreShaderMatrix(r3dRenderMatrix* out, DirectX::CXMMATRIX matrix) const
+{
+	DirectX::XMStoreFloat4x4(out, matrix);
+}
+
+void r3dRenderLayer::StoreShaderMatrixTranspose(r3dRenderMatrix* out, const D3DXMATRIX& in) const
+{
+	DirectX::XMStoreFloat4x4(out, DirectX::XMMatrixTranspose(DirectX::XMLoadFloat4x4(reinterpret_cast<const DirectX::XMFLOAT4X4*>(&in))));
+}
+
+void r3dRenderLayer::StoreShaderMatrixTranspose(r3dRenderMatrix* out, DirectX::CXMMATRIX matrix) const
+{
+	DirectX::XMStoreFloat4x4(out, DirectX::XMMatrixTranspose(matrix));
+}
+
 void r3dRenderLayer::SetZRange( r3dZRange range )
 {
 	ZRange = range ;

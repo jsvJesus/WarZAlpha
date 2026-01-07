@@ -4719,6 +4719,27 @@ void obj_Player::DrawReticle()
 	r3dRenderer->SetRenderingMode(R3D_BLEND_POP);
 }
 
+////////////////////////////////////////////////////////////
+// ARES INFO TEXT
+static inline r3dColor GetRainbowColor(float t)
+
+{
+
+	const float speed = 0.8f;              // overflow speed
+
+	t = t * speed * 6.2831853f;            // sec -> radians
+
+	float r = 0.5f + 0.5f * sinf(t + 0.0f);
+
+	float g = 0.5f + 0.5f * sinf(t + 2.094f); // +120°
+
+	float b = 0.5f + 0.5f * sinf(t + 4.188f); // +240°
+
+	return r3dColor((int)(r * 255), (int)(g * 255), (int)(b * 255));
+
+}
+//////////////////////////////////////////////////////////////////////////
+
 void obj_Player::DrawLabel()
 {
 	r3dRenderer->SetMaterial(NULL);
@@ -4736,13 +4757,39 @@ void obj_Player::DrawLabel()
 		}
 	} pushRestoreStates; (void)pushRestoreStates;
 
-	if(NetworkLocal && gClientLogic().localPlayer_)
+	//////////////////////////////////////////////////////////////////////////
+	// ARES INFO TEXT mod func by ES3N1N
+	if (NetworkLocal && gClientLogic().localPlayer_)
 	{
-		// show a warning if FPS or PING is low
-		float fps = r3dGetAvgFPS();
-		if(fps < 20.0f)
-			Font_Label->PrintF(r3dRenderer->ScreenW-80, 0, r3dColor(243,43,37), "FPS: %.1f", fps);
+		// --- FPS/PING ---
+		const float fps = r3dGetAvgFPS();
+		const int   ping = gClientLogic().net_ ? gClientLogic().net_->lastPing_ : 0;
+
+		// --- COLORS ---
+		const r3dColor fpsColor = (fps < 20.0f) ? r3dColor(255, 0, 0) : (fps < 40.0f) ? r3dColor(255, 180, 0) : r3dColor(0, 255, 60);
+		const r3dColor pingColor = (ping > 200) ? r3dColor(255, 0, 0) : (ping > 100) ? r3dColor(255, 180, 0) : r3dColor(0, 255, 60);
+
+		// --- FPS / PING: TOP LEFT ---
+		const int leftX = 10;
+		Font_Label->PrintF(leftX, 5, fpsColor, "FPS: %.1f", fps);
+		Font_Label->PrintF(leftX, 25, pingColor, "PING: %d ms", ping);
+
+		// --- A.R.E.S: CENTERED TOP (overflow + shadow) ---
+		const char* title = "A.R.E.S ALPHA v1.0.0a";
+
+		// rough centering without width measurement functions
+		int titleX = r3dRenderer->ScreenW / 2 - 140; // move the number if necessary
+		int titleY = 6;
+
+		r3dColor shadow = r3dColor(0, 0, 0, 180);
+		r3dColor rgb = GetRainbowColor(r3dGetTime());
+
+		// shadow
+		Font_Label->PrintF(titleX + 1, titleY + 1, shadow, "%s", title);
+		// colored text
+		Font_Label->PrintF(titleX, titleY, rgb, "%s", title);
 	}
+	/////////////////////////////////////////////////////////////////////////
 
 #ifndef FINAL_BUILD
 	// draw player CustomerID/gamertag for admins

@@ -2,6 +2,7 @@
 #include "r3d.h"
 
 #include "PFX_ExtractGlow.h"
+#include <DirectXMath.h>
 
 //------------------------------------------------------------------------
 
@@ -61,10 +62,17 @@ PFX_ExtractGlow::CloseImpl() /*OVERRIDE*/
 void
 PFX_ExtractGlow::PrepareImpl( r3dScreenBuffer* /*dest*/, r3dScreenBuffer* /*src*/ ) /*OVERRIDE*/
 {
-	D3DXVECTOR4 Const( mSettings.TintColor.R, mSettings.TintColor.G, mSettings.TintColor.B, mSettings.TintColor.A );
-	Const *= mSettings.Multiplier / 255.0f,
+	DirectX::XMVECTOR color = DirectX::XMVectorSet(
+		mSettings.TintColor.R,
+		mSettings.TintColor.G,
+		mSettings.TintColor.B,
+		mSettings.TintColor.A);
+	color = DirectX::XMVectorScale(color, mSettings.Multiplier / 255.0f);
 
-	r3dRenderer->pd3ddev->SetPixelShaderConstantF( 0, (float*)Const, 1 );
+	DirectX::XMFLOAT4 constColor;
+	DirectX::XMStoreFloat4(&constColor, color);
+
+	r3dRenderer->pd3ddev->SetPixelShaderConstantF(0, &constColor.x, 1);
 }
 
 //------------------------------------------------------------------------
